@@ -24,6 +24,13 @@ Methods refined through operating a long-running, tool-using AI assistant across
 - [English — From Capability to Authority: Principles from Operating Hermes](readings/principles-from-hermes-in-practice.en.md)
 - [Русский — От способности к полномочию: принципы эксплуатации Hermes](readings/principles-from-hermes-in-practice.ru.md)
 
+### 3. Single Agent by Default
+
+A research-grounded decision procedure for when delegation earns its coordination cost—and when one coherent agent should keep the work.
+
+- [English — Single Agent by Default: When Delegation Earns Its Coordination Tax](readings/single-agent-by-default.en.md)
+- [Русский — Один агент по умолчанию: когда делегирование окупает координационный налог](readings/single-agent-by-default.ru.md)
+
 ## Field guides
 
 ### Hardening Hermes Agent
