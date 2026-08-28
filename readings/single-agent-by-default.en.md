@@ -145,7 +145,20 @@ This reduces the “game of telephone” described by Anthropic: specialist outp
 
 A summary cap should be treated as a handoff limit, not as a substitute for durable evidence. If omitted detail matters, store it and return a reference.
 
-## 7. Hermes mapping
+## 7. Keep the hot path short
+
+The cited studies measure coordination among agents, not the length of skill files or policies.[1][2] Extending the result to instruction surfaces is an engineering inference: any rule loaded on every routine run consumes context, adds conditions to reconcile, and can turn one coherent agent into an internal communication graph.
+
+Rigor is not proportional to prose volume. Use a complexity budget:
+
+- keep only rules needed on every run in the hot path;
+- move branch-specific rationale and edge cases behind optional references;
+- add a rule only when it changes a decision or prevents a demonstrated reusable failure;
+- before appending, replace, consolidate, or delete equivalent prose.
+
+An incident can justify learning without justifying permanent ceremony. Extract the smallest durable invariant, discard incident residue, and remeasure the routine path. A skill that only grows will eventually reproduce the coordination cost it was meant to control.
+
+## 8. Hermes mapping
 
 Hermes provides three different execution surfaces:[4][5]
 
@@ -166,7 +179,7 @@ A useful configuration posture is:
 
 The controller should still decide whether a child should exist at all.
 
-## 8. Measure the architecture, not the spectacle
+## 9. Measure the architecture, not the spectacle
 
 After a delegated run, record:
 
@@ -185,6 +198,7 @@ Parallelism can be worth higher compute for urgent or valuable research. Higher 
 
 ```text
 one agent by default
+→ keep the routine instruction path short
 → delegate only bounded independent work
 → centralize shared state and authority
 → freeze before independent review
