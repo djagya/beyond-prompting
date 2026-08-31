@@ -62,7 +62,8 @@ Installing or reading the repository makes the procedure available; it does **no
 This repository uses two complementary open conventions:
 
 - [`AGENTS.md`](https://agents.md/) for project-level instructions loaded from a repository;
-- [`SKILL.md`](https://agentskills.io/specification) for a portable, explicitly invoked procedure.
+- [`SKILL.md`](https://agentskills.io/specification) for a portable, explicitly invoked procedure;
+- [Best practices for skill creators](https://agentskills.io/skill-creation/best-practices) for expertise-grounded, execution-refined, context-conscious skill design.
 
 A bare repository URL is reference material, not executable authority. Agents should default to assessment when the requested action class is ambiguous.
 
