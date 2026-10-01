@@ -41,13 +41,22 @@ def inspect(root):
                 errors.append({"file": rel, "kind": "private_identifier_pattern", "pattern": pattern})
         if path.name == "SKILL.md":
             try:
-                assert text.startswith("---\n")
-                metadata = yaml.safe_load(text.split("---", 2)[1])
-                assert isinstance(metadata, dict)
-                assert metadata["name"] == path.parent.name
-                assert re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", metadata["name"])
-                assert isinstance(metadata["description"], str) and metadata["description"].strip()
-            except (AssertionError, KeyError, ValueError, yaml.YAMLError):
+                lines = text.splitlines()
+                if not lines or lines[0] != "---":
+                    raise ValueError("Missing opening frontmatter delimiter")
+                end = lines.index("---", 1)
+                metadata = yaml.safe_load("\n".join(lines[1:end]))
+                if not isinstance(metadata, dict):
+                    raise ValueError("Frontmatter must be a mapping")
+                name = metadata.get("name")
+                description = metadata.get("description")
+                if not isinstance(name, str) or name != path.parent.name:
+                    raise ValueError("Invalid skill name")
+                if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
+                    raise ValueError("Invalid skill name format")
+                if not isinstance(description, str) or not description.strip():
+                    raise ValueError("Missing description")
+            except (KeyError, ValueError, yaml.YAMLError):
                 errors.append({"file": rel, "kind": "skill_frontmatter"})
     return {"markdown_files": len(docs), "skill_count": sum(p.name == "SKILL.md" for p in docs),
             "errors": errors, "status": "PASS" if not errors else "FAIL",
