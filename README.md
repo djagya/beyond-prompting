@@ -57,6 +57,25 @@ Then start with a read-only assessment:
 
 Installing or reading the repository makes the procedure available; it does **not** authorize deployment changes. To use the repository as project context, clone it and work inside the checkout so a compatible agent can discover the root [`AGENTS.md`](AGENTS.md).
 
+### Weekly Learning Extraction
+
+Turn a week of real sessions into evidence-grounded lessons, audit the relevant skills and executable surfaces, and apply only explicitly authorized improvements.
+
+- [English — Weekly Learning Extraction](guides/weekly-learning-extraction.en.md)
+- [Русский — Извлечение уроков за неделю](guides/weekly-learning-extraction.ru.md)
+- [Reusable agent procedure](skills/weekly-learning-extraction/SKILL.md)
+
+### Setup patterns and the Hermes fork
+
+A portable map of the controls behind this practice: capability-aware delegation, current-state ownership, human-job acceptance, explicit external boundaries, and native lifecycle ownership.
+
+- [English — Setup Patterns Worth Reusing](guides/setup-patterns.en.md)
+- [Русский — Приёмы сетапа, которые стоит перенять](guides/setup-patterns.ru.md)
+- [Danil's Hermes fork](https://github.com/djagya/hermes-agent)
+- [Upstream Hermes](https://github.com/NousResearch/hermes-agent)
+
+The fork is a customization and integration surface, not official upstream. Its branches evolve; inspect the intended revision and current upstream diff rather than assuming every fork change remains unmerged or that its default branch matches the deployed build.
+
 ## Conventions for agents
 
 This repository uses two complementary open conventions:
