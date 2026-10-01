@@ -4,6 +4,8 @@
 
 This is a map of portable decisions, not a copy of a private configuration. Adapt the controls to your own account, tools and risk envelope.
 
+Start with the [agent entry guide](agent-start.en.md) for a capability map and fallbacks. One controller is sufficient; private profiles, workers, memory services and deployment paths are not prerequisites. For concrete execution contracts, see [Operating Loops](operating-loops.en.md).
+
 ## 1. Review experience, then inspect the mechanism
 
 Run [Weekly Learning Extraction](weekly-learning-extraction.en.md): review first, inspect current owners second, implement only after a bounded mandate. A failed outcome may expose an instruction conflict or unavailable capability rather than a missing rule.

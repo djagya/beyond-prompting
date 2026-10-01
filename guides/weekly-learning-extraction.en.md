@@ -15,8 +15,11 @@ successes and avoidable user intervention. Be initiative-driven, but do
 not modify anything: no memory, skills, files, jobs, tasks or settings.
 
 Use primary messages and adjacent responses. Distinguish my decisions
-from your proposals and generated notifications. Deduplicate replayed
-or compacted history. State the exact window, coverage and limitations.
+from your proposals and generated notifications. Collapse copies only when transport identity or lineage proves replay;
+identical text or timestamps are insufficient. Preserve independently
+sent identical human corrections. Apply the window to message timestamps,
+not session creation. A user-role record does not prove human authorship.
+State unresolved provenance, the exact window, coverage and limitations.
 
 For each important lesson, provide:
 - the observed pattern and supporting source locators;
@@ -32,7 +35,7 @@ Tool-created caches may still exist even during a read-only review. Distinguish 
 
 ## Review activity, not just session creation dates
 
-Fix the time window and timezone before selection. Include old sessions that contain new messages in that window. Where available, separate substantive human messages from scheduled reports, task notifications and transport metadata.
+Fix the time window and timezone before selection. Include old sessions that contain new messages in that window. Always distinguish human authorship from record role; where the transport cannot establish it, report uncertainty. Separate substantive human messages from scheduled reports, task notifications and transport metadata.
 
 Discovery results and bookends help locate a conversation. They do not prove a decision. Read the original message and the surrounding exchange before attributing acceptance, correction or completion to the user.
 
@@ -92,6 +95,8 @@ Use the narrowest appropriate proof:
 - a natural controller wake and final delivery for continuation.
 
 A source-string assertion proves that text exists. A fresh-context LLM canary proves behavior only in that scenario. Neither is production acceptance. Report unexecuted checks and blockers explicitly; never count prepared tests as passed tests.
+
+Source locators belong in a private evidence report by default. For authorized sharing, produce a separate generic summary with no private locators, account identifiers or internal topology. Do not publish or persist it automatically.
 
 ## Keep the useful lesson, not the whole week
 

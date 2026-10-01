@@ -28,9 +28,11 @@ Use **selection before canonization**:
 ```text
 possibilities
 → explicit comparison
-→ human selection
+→ human selection or bounded delegated selection
 → accepted operating state
 ```
+
+A user may delegate bounded selection under explicit criteria; this does not turn every generated proposal into accepted state.
 
 The agent may generate options and make trade-offs visible. Until a choice is accepted, those options remain provisional. The system should support judgment rather than push the user toward its own first concrete answer.
 
@@ -148,7 +150,7 @@ A running system has several layers of truth:
 4. **Mutable state:** cursors, locks, manifests, queues, and receipts satisfy their invariants.
 5. **Operational path:** the real workflow functions and remains recoverable.
 
-Each layer requires different evidence.
+Each layer requires different evidence. Test only within the authorized scope and claim no more than the tested layer; a source-change task does not silently authorize deployment. Hand off unverified runtime layers explicitly.
 
 A source diff does not prove deployment. Deployment does not prove process freshness. A healthy process does not prove state correctness. An isolated test does not prove scheduler-owned execution. Exit code zero does not prove the intended external consequence.
 
@@ -186,7 +188,7 @@ These mechanisms make repeated execution safer while keeping uncertainty visible
 
 ## 7. Gate destructive cleanup on recoverability and authority
 
-Destructive cleanup requires two independent gates:
+For valuable or non-reproducible data, destructive cleanup requires two independent gates:
 
 1. evidence that the intended deletion set is recoverable;
 2. authority to delete that exact set.
@@ -201,13 +203,13 @@ A sound procedure is:
 6. verify the archive from a second source of evidence;
 7. freeze an immutable deletion manifest;
 8. perform a dry run against that manifest;
-9. obtain explicit authorization bound to the frozen manifest;
+9. establish explicit authorization bound to the frozen manifest, including a valid standing mandate when host policy permits;
 10. delete only the frozen set;
 11. verify both source absence and archive presence.
 
 Counts alone are weak evidence. The archive may contain the right number of files and still be missing the only irreplaceable one.
 
-Evidence establishes recoverability; it does not itself authorize deletion. Obtain explicit approval bound to the frozen manifest before deleting it.
+Evidence establishes recoverability; it does not itself authorize deletion. Confirm that the exact frozen set is covered by an explicit mandate before deleting it. Reproducible caches can use a proportionate recovery/rebuild path rather than this full archival protocol; preserve required authority and irreplaceable evidence.
 
 ## 8. Put security boundaries outside the model
 
@@ -231,7 +233,9 @@ NIST’s work on agent hijacking shows why adaptive and repeated evaluation matt
 
 Simon Willison’s “lethal trifecta” provides a compact threat model: private data, untrusted content, and external communication become dangerous when combined in one agentic system.[6] OWASP’s AI Agent Security Cheat Sheet addresses related risks including prompt injection, tool abuse, excessive autonomy, sensitive-data exposure, and inadequate human oversight.[7]
 
-## 9. Turn experience into procedural competence
+For mutable sources, attach the checked version or retrieval date, authority and applicability. Top-k retrieval absence does not prove absence from the corpus or establish the latest event; refresh decision-relevant current facts.
+
+## 9. Convert experience into procedural competence
 
 A long-running assistant should improve through skills, not through uncontrolled prompt accumulation.
 
@@ -267,11 +271,11 @@ Before trusting a tool-using agent with consequential work:
 2. Define the intended consequence and named failure scenarios.
 3. Separate preparation from commitment.
 4. Bind authorization to the exact target, payload, and scope.
-5. Execute through the real path.
+5. Exercise the authorized path; name any unverified layers.
 6. Read the resulting state back independently.
 7. Preserve evidence and unresolved ambiguity.
 8. Convert repeated successful procedures into maintained skills.
-9. Keep human selection before canonization.
+9. Keep human or explicitly delegated selection before canonization.
 
 This deliberately unglamorous protocol is what keeps an agent useful after the demo.
 

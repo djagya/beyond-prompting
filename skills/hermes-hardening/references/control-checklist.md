@@ -50,7 +50,7 @@ Never record secret values. Evidence should identify the command, source, timest
 | --- | --- | --- |
 | HRD-030 | Effective tools are minimized per profile and platform. | `hermes tools --summary`; effective tool list. |
 | HRD-031 | Interactive approval mode is `smart` or `manual`. | `hermes config get approvals.mode`. |
-| HRD-032 | Cron and one-shot dangerous commands fail closed. | `approvals.cron_mode=deny`, `approvals.single_query_mode=deny`; dry-run verdict. |
+| HRD-032 | Cron, one-shot and supported unattended API/webhook sessions fail closed. | `approvals.cron_mode=deny`, `approvals.single_query_mode=deny`, supported `approvals.unattended_mode=deny`; applicable non-mutating verdict checks. |
 | HRD-033 | YOLO is absent from services, aliases, and privileged automation. | Service unit/launcher inspection. |
 | HRD-034 | Permanent command allowlist is reviewed and narrow. | `command_allowlist` inspection; approval-history review. |
 | HRD-035 | Deterministic deny rules exist for prohibited actions when useful. | Config plus `hermes approvals test`; note that this is not a sandbox. |
@@ -77,7 +77,7 @@ Never record secret values. Evidence should identify the command, source, timest
 | --- | --- | --- |
 | HRD-050 | Every MCP/plugin/skill has an owner, source, version/update policy, and purpose. | Extension inventory. |
 | HRD-051 | MCP tools use explicit includes; resources/prompts are disabled unless needed. | Resolved MCP config and effective tool list. |
-| HRD-052 | Uncontrolled MCP servers are marked untrusted; real write restrictions exist at the credential/provider layer. | Config plus denied provider-side write canary. |
+| HRD-052 | Uncontrolled MCP servers are marked untrusted; real write restrictions exist at the credential/provider layer. | Permission metadata; denied write canary only on explicitly authorized disposable resources or non-mutating validation endpoints. Otherwise denial behavior is unverified. |
 | HRD-053 | TLS verification is enabled for remote MCPs. | Resolved config and connection test. |
 | HRD-054 | Shell hooks are explicitly reviewed and authorized. | Hook inventory and consent state. |
 | HRD-055 | Supply-chain audit runs after install/update/extension changes. | `hermes security audit` result and disposition. |

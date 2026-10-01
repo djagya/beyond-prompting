@@ -52,7 +52,7 @@ A plausible result is not necessarily a real result.
 
 Ask the agent to distinguish observation, inference, hypothesis, external claim, and direct evidence.
 
-For consequential work, require it to execute the real path and independently read the result back. “The command exited successfully” is evidence about the command, not automatically about the intended consequence.
+For consequential work, require it to exercise the authorized real path and independently read the result back. Claims must stop at the tested layer; a patch request does not authorize deployment or a consequential external transaction. “The command exited successfully” is evidence about the command, not automatically about the intended consequence.
 
 ## 3. Develop taste and editorial judgment
 
@@ -136,9 +136,9 @@ For someone already comfortable with AI:
 1. Choose one recurring real problem.
 2. Complete it interactively several times.
 3. Record where the model lacked context or produced false confidence.
-4. Give it stable source material and explicit acceptance criteria.
+4. Give it stable source material and explicit acceptance criteria; mark mutable facts with source, version/retrieval date and applicability.
 5. Add tools only where they enable the real outcome.
-6. Require execution and independent verification.
+6. Require authorized execution and independent verification; hand off unverified layers without claiming end-to-end completion.
 7. Automate only the portions that have become stable.
 8. Preserve human judgment where errors are expensive or meaning is still being chosen.
 9. Extract the successful method into a reusable skill.

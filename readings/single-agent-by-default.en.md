@@ -43,7 +43,7 @@ These are benchmark results, not universal constants. The durable lesson is stru
 
 *Single-agent or Multi-agent Systems? Why Not Both?* compared SAS and MAS designs across code generation, software engineering, mathematical reasoning, travel planning, financial analysis, retrieval, and scientific experimentation.[2]
 
-The authors found that multi-agent gains often narrowed as base models improved, while coordination remained expensive. In their evaluated systems, MAS consumed 4–220× more input tokens and 2–12× more output tokens than SAS. They identified three recurring defect locations:
+The authors found that multi-agent gains often narrowed as base models improved, while coordination remained expensive. Their evaluated systems showed substantial additional token consumption for MAS. The prose ranges in §3.2 do not match every row of Table 3, so those ranges are not treated here as a uniform summary of the table. They identified three recurring defect locations:
 
 - **node defects:** one critical agent still bottlenecks the whole system;
 - **edge defects:** downstream agents are harmed by excessive or distracting upstream output;
@@ -98,7 +98,8 @@ Prefer architectures in this order:
 2. **Controller + specialist** — one isolated investigation or critique.
 3. **Small parallel batch** — several disjoint workers, one central synthesizer.
 4. **Separate audit wave** — read-only reviewers after a frozen implementation barrier.
-5. **Cascade** — single agent first; escalate after a failed or incomplete verification.
+
+A cascade is an escalation policy, not a fifth larger topology: start with one agent and escalate only when a failed or incomplete verification justifies it. A separate audit wave is optional: use it for a distinct material risk, specialist expertise or justified independence; otherwise controller verification suffices.
 
 Agent count is not a quality metric. A five-agent system with duplicated discovery and overlapping ownership may be worse than one strong agent with a disciplined tool loop.
 
@@ -113,9 +114,9 @@ The controller should retain:
 - conflict resolution and final synthesis;
 - final verification and the completion claim.
 
-Children should receive bounded scopes and return evidence. Their summaries are claims, not proof. Read back written artifacts, rerun consequential tests, and inspect external state at the controller.
+Children should receive bounded scopes and return evidence. Their summaries are claims, not proof. Read back consequential written artifacts and inspect external state at the controller. Repeat tests only when safe and authorized; reuse valid evidence bound to the exact unchanged candidate. A patch mandate does not authorize deployment, real payments or other external tests. Completion claims must name the tested layer and any unverified handoff.
 
-For implementation and audit, use an explicit temporal barrier:
+When independent audit is warranted, use an explicit temporal barrier:
 
 ```text
 snapshot
@@ -137,7 +138,7 @@ Prefer:
 ```text
 child explores a large corpus
 → writes a cited report or structured dataset
-→ returns a path plus compact findings
+→ returns a path, source/version, retrieval date, scope and compact findings
 → controller reads only the decision-relevant sections
 ```
 
@@ -201,7 +202,7 @@ one agent by default
 → keep the routine instruction path short
 → delegate only bounded independent work
 → centralize shared state and authority
-→ freeze before independent review
+→ freeze if independent review is warranted
 → verify child claims at the root
 → escalate architecture only when evidence justifies it
 ```

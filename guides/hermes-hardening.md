@@ -97,7 +97,9 @@ hermes cron list
 hermes security audit --fail-on high
 ```
 
-Create a protected backup before mutation:
+Check the target version's backup contents and retention first. Use `--quick` only when its documented critical-state coverage includes every proposed target; it is not a generic backup of skills, plugins, project files or external state. Otherwise use a full backup and separately protect project and external state. Full-backup retention may delete older archives; choose a protected output location and retention policy before running it.
+
+When that coverage is sufficient, create a protected critical-state snapshot before mutation:
 
 ```bash
 hermes backup --quick --label pre-hardening
@@ -197,6 +199,8 @@ Redaction reduces accidental disclosure in context and logs. It does not stop a 
 
 Where possible, inject credentials only into the process that needs them. Prefer external secret managers or service-specific identities over a large ambient `.env`. Protect any local secret file with restrictive ownership and permissions.
 
+Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
+
 ## 7. Minimize the tool surface
 
 Messaging platforms commonly inherit a broad default toolset. Configure tools per platform and profile instead of assuming “the agent will not use them.”
@@ -231,7 +235,10 @@ A practical baseline:
 hermes config set approvals.mode smart
 hermes config set approvals.cron_mode deny
 hermes config set approvals.single_query_mode deny
+hermes config set approvals.unattended_mode deny
 ```
+
+On versions supporting `approvals.unattended_mode`, include webhook/API programmatic sessions in the fail-closed check. Verify support on the target before applying; unsupported versions need an explicit external execution boundary, not an invented config key.
 
 For high-consequence interactive administration, consider `manual` instead of `smart`.
 
@@ -554,6 +561,8 @@ A hardened deployment should demonstrate, not merely claim, the following:
 - backup handling and retention are documented.
 
 ### Tools and actions
+
+Write-denial tests are write attempts: if enforcement fails they can mutate data. Run them only when the exact test is authorized on disposable resources, or use a provider-supported non-mutating validation endpoint. Otherwise inspect permission metadata and report denial behavior as unverified. Existing precise authorization need not be requested twice.
 
 - excluded tools and MCP operations are absent;
 - read-only credentials reject a write attempt at the provider boundary;

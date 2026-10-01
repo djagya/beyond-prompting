@@ -8,7 +8,7 @@ metadata:
 
 # Weekly Learning Extraction
 
-Human guides: [English](../../guides/weekly-learning-extraction.en.md) and [Russian](../../guides/weekly-learning-extraction.ru.md).
+Human guides: [English](https://github.com/djagya/beyond-prompting/blob/main/guides/weekly-learning-extraction.en.md) and [Russian](https://github.com/djagya/beyond-prompting/blob/main/guides/weekly-learning-extraction.ru.md). Human guides are optional rationale; this procedure is self-contained when installed alone.
 
 ## Authority and modes
 
@@ -16,17 +16,19 @@ Default to REVIEW: read-only analysis. AUDIT inspects relevant procedures and su
 
 ## Procedure
 
-1. Fix the seven-day activity window, timezone and corpus. Include sessions begun earlier with messages inside the window. Use the actual environment's session API; do not invent universal Hermes export commands. State unavailable coverage.
-2. Deduplicate transport replay/compaction lineages. Exclude machine notices from human authorship. Bookends and search hits are discovery, not proof of acceptance; inspect primary substantive user messages and adjacent responses.
+1. Fix the seven-day activity window, timezone and corpus. Apply the bounds to each message timestamp, not the session creation date; include old sessions with in-window activity. Check actual history/provenance capabilities before choosing tools. With only selected exports review that bounded corpus; without history report readiness, not invented lessons. Unknown timestamps or authorship are coverage uncertainty. Do not invent universal Hermes export commands.
+2. A `user` role does not prove human authorship: exclude generated jobs, task notices, quoted material and compaction summaries as consent evidence. Collapse only copies with demonstrated transport identity/lineage; matching text or timestamps alone do not prove replay. Preserve independently sent identical corrections. Mark unresolved provenance instead of silently removing it. Bookends and search hits locate evidence; inspect primary authored messages and adjacent responses.
 3. Select recurring corrections, major failures, successful reusable methods and avoidable user intervention. Keep observation, inference and proposal separate. Do not convert every incident into a rule or obligation.
 4. For each significant lesson, identify the existing semantic owner. Distinguish missing rule, adequate-but-unapplied rule, conflicting contract, routing/capability/code/config defect, and already repaired history. Inspect current primary surfaces before claiming a live defect.
-5. Use bounded independent children only where their evidence surfaces are separable. Give read-only scope, evidence budget, forbidden actions and handoff format. Root verifies decision-relevant claims and synthesizes the plan; child confidence is not proof.
+5. Default to one controller with task-relevant context; no workers, profiles or private integrations are required. Use bounded independent children only where their evidence surfaces are separable and available. Give read-only scope, evidence budget, forbidden actions and handoff format. Root verifies decision-relevant claims and synthesizes the plan; child confidence is not proof.
 6. Propose exact targets, minimal changes, ordering, dependencies, acceptance checks, gates and recovery. Prefer replacing superseded current requirements to duplicating prose. Preserve historical evidence and paused state.
 7. If implementation is subsequently authorized, preview the envelope, apply on supported surfaces and read back exact targets. Preserve action-specific external gates and security controls. Never publish private incident evidence.
 8. Test actual outcomes at the appropriate boundary. Distinguish static assertions, fixtures, fresh-context behavioral canaries, live access probes and production evidence. Prepared/unexecuted tests are not PASS.
 9. Report applied changes separately from proposals and open acceptance. Persist lessons only in their proper owner within the authorized envelope; do not silently rewrite identity.
 
 ## Output
+
+The evidence report and its locators are private by default. If sharing is authorized, prepare a separate generic summary without session IDs, internal paths, account identifiers or topology; do not publish or persist it without a mandate. If the environment lacks skills or persistent memory, propose changes to its existing procedural owner rather than auto-installing a new store.
 
 - exact window, coverage, exclusions and limitations;
 - selected findings: primary locator, pattern, reusable principle, applicability;

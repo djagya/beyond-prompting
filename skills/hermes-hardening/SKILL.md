@@ -48,7 +48,7 @@ Before consequential mutation, state:
 - reversibility or recovery boundary;
 - material failure modes, including lockout and service interruption.
 
-Fresh action-specific confirmation is required before:
+Fresh action-specific confirmation is required for the following actions unless the current explicit mandate already covers the exact target, action, scope and material risk, and the host policy permits that mandate:
 
 - irreversible outward communication or commitment;
 - credential rotation or revocation;
@@ -56,7 +56,7 @@ Fresh action-specific confirmation is required before:
 - restore/import;
 - destructive mutation without tested recovery;
 - firewall, listener, ingress, or egress changes that can sever access;
-- gateway/service restart unless the current explicit mandate covers it;
+- gateway/service restart;
 - material expansion beyond the authorized target or payload.
 
 Local reversible configuration changes may proceed in APPLY mode after preview when they are inside the delegated scope and recovery remains credible.
@@ -79,6 +79,8 @@ Discover safely when possible; ask only when the answer changes the path.
 - allowed network reads and allowed persistence/evidence locations.
 
 Never infer a company/client boundary from a profile name. Never print secret values.
+
+Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
 
 ## Source priority
 
@@ -227,9 +229,13 @@ Never patch `cron/jobs.json`, pairing stores, auth files, or state databases as 
 
 Do not prescribe ownership or permission changes to business data until the intended access policy is established. When purpose is unknown, record `needs_decision` and present isolation options rather than classifying required access as a defect.
 
+Write-denial tests are write attempts: if enforcement fails they can mutate data. Run them only when the exact test is authorized on disposable resources, or use a provider-supported non-mutating validation endpoint. Otherwise inspect permission metadata and report denial behavior as unverified. Existing precise authorization need not be requested twice.
+
 ### 7. Protect recovery before APPLY
 
-Before mutation:
+Check the target version's backup contents and retention first. Use `--quick` only when its documented critical-state coverage includes every proposed target; it is not a generic backup of skills, plugins, project files or external state. Otherwise use a full backup and separately protect project and external state. Full-backup retention may delete older archives; choose a protected output location and retention policy before running it.
+
+When that coverage is sufficient:
 
 ```bash
 hermes backup --quick --label pre-hardening
@@ -276,7 +282,7 @@ At minimum verify:
 - listener exposure from host and authorized external vantage points;
 - private/cloud-metadata URL policy;
 - dangerous-command denial in cron/one-shot contexts;
-- provider-side rejection of out-of-scope writes;
+- provider-side rejection of out-of-scope writes, only using an authorized disposable target or non-mutating validation endpoint;
 - prompt-injection/secret-canary behavior;
 - backup restore on an isolated target;
 - gateway/service recovery when restart is in scope;
@@ -311,11 +317,14 @@ Do not say “secure” without scope. Prefer:
 
 Use these only after confirming applicability and current CLI support:
 
+On versions supporting `approvals.unattended_mode`, include webhook/API programmatic sessions in the fail-closed check. Verify support on the target before applying; unsupported versions need an explicit external execution boundary, not an invented config key.
+
 ```bash
 hermes config set security.redact_secrets true
 hermes config set approvals.mode smart
 hermes config set approvals.cron_mode deny
 hermes config set approvals.single_query_mode deny
+hermes config set approvals.unattended_mode deny
 hermes config set security.allow_private_urls false
 hermes config set security.tirith_enabled true
 hermes config set gateway.delivery_ledger true
