@@ -137,7 +137,8 @@ Also establish from the effective host/runtime:
 
 - OS identity and privilege;
 - process/service owner;
-- container/VM backend, capabilities, seccomp/no-new-privileges, resource limits;
+- container/VM backend, capabilities, seccomp/no-new-privileges, resource limits (the official image starts as root to remap UID and then drops privileges; judge the gateway process's effective UID, not the container start user);
+- whether the gateway is per-profile or multiplexed, and whether any sidecar shares the data directory;
 - sensitive mounts and filesystem permissions;
 - listener bind addresses, host publishing, firewall, proxy, TLS/auth, and authorized external reachability;
 - credential sources by name/scope only;
@@ -145,7 +146,9 @@ Also establish from the effective host/runtime:
 - backup and restore state.
 - connected-browser profiles and authenticated sessions;
 - API, dashboard, webhook, CDP, metrics, and noVNC authentication/exposure;
-- persistent memory and skill-write policy.
+- persistent memory and skill-write policy, read per profile (named profiles fall back to upstream defaults, not the default profile's values);
+- effective cron toolsets, including globally enabled MCP servers a job may receive implicitly;
+- secret source and its rate or read budget, if an external manager is used.
 
 Do not conclude that a listener is public from an in-container `0.0.0.0` bind alone. Do not conclude isolation from a profile or container label. Snapshot the assessed target before and after ASSESS; classify any runtime-generated state separately from configuration or business-data mutation.
 
@@ -225,7 +228,7 @@ Prefer supported commands over direct edits to Hermes live stores:
 - `hermes gateway` for service lifecycle;
 - `hermes skills` and `hermes plugins` for extensions.
 
-Never patch `cron/jobs.json`, pairing stores, auth files, or state databases as a normal configuration path. Never invent a flag, binary location, config key, or restore command from memory. Resolve configured executable paths—Tirith defaults to PATH lookup through `security.tirith_path`—and mark a command unresolved if it cannot be verified on the target.
+Never patch `cron/jobs.json`, pairing stores, auth files, or state databases as a normal configuration path. The one recorded exception: where the CLI cannot set a cron job's `enabled_toolsets`, propose an atomic edit of only that field with read-back through `hermes cron list`, marked version-dependent. Never invent a flag, binary location, config key, or restore command from memory. Resolve configured executable paths—Tirith defaults to PATH lookup through `security.tirith_path`—and mark a command unresolved if it cannot be verified on the target.
 
 Do not prescribe ownership or permission changes to business data until the intended access policy is established. When purpose is unknown, record `needs_decision` and present isolation options rather than classifying required access as a defect.
 
@@ -345,10 +348,17 @@ hermes config set security.allow_lazy_installs false
 hermes config set security.tirith_fail_open false
 hermes config set checkpoints.enabled true
 hermes config set skills.write_approval true
-hermes config set memory.write_approval true
 ```
 
-The second block is not a blind baseline. Its controls can remove required context, shared CLI auth, runtime dependency installation, command availability, storage capacity, or immediate persistence of agent-created memory/skills. Test before adopting.
+The second block is not a blind baseline. Its controls can remove required context, shared CLI auth, runtime dependency installation, command availability, storage capacity, or immediate persistence of agent-created skills. Test before adopting.
+
+Do not recommend `memory.write_approval true` for a profile that runs cron or other unattended work: staged writes need an operator, so unattended memory writes accumulate unapproved and are effectively lost. Prefer `false` plus omitting the `memory` toolset from jobs that must not write memory; recommend `true` only where all writers are interactive or pending writes are reviewed on a schedule.
+
+Also check, per profile:
+
+- `browser.auto_local_for_private_urls false` where private URLs must stay blocked (otherwise they route to a local browser);
+- list-valued keys read back as lists, not strings;
+- effective policy matches intent after every deploy; mirrored config and agent self-edits can flip approval leaves.
 
 ## Guardrails and common failure modes
 

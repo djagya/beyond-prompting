@@ -4,7 +4,7 @@
 
 This is a map of portable decisions, not a copy of a private configuration. Adapt the controls to your own account, tools and risk envelope.
 
-Start with the [agent entry guide](agent-start.en.md) for a capability map and fallbacks. One controller is sufficient; private profiles, workers, memory services and deployment paths are not prerequisites. For concrete execution contracts, see [Operating Loops](operating-loops.en.md).
+Start with the [agent entry guide](agent-start.en.md) for a capability map and fallbacks. One controller is sufficient; private profiles, workers, memory services and deployment paths are not prerequisites. For concrete execution contracts, see [Operating Loops](operating-loops.en.md). For a concrete deployment, see [Reference Setup](setup-reference.en.md), [Operations](operations.en.md), [Identity, Memory and Context](identity-memory-context.en.md) and [Operating Hermes with a Coding Agent](coding-agent-operator.en.md).
 
 ## 1. Review experience, then inspect the mechanism
 

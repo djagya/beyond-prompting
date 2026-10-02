@@ -132,6 +132,15 @@ For an always-on gateway or company deployment:
 
 Hermes' official security guide recommends a container backend for production gateways. A container with sensitive read-write mounts, ambient credentials, broad egress, or the Docker socket remains highly privileged.
 
+Container nuances observed in practice:
+
+- **"Not root" means the gateway process, not the container start user.** The official image starts as root so its entrypoint can remap the runtime UID/GID to match the host data owner and then drop privileges (documented as `gosu` to an unprivileged user). `no-new-privileges` on the *gateway* container can break that setuid step; prefer `cap_drop: [ALL]` with only the capabilities the entrypoint needs and a targeted seccomp profile. Verify the effective UID of the gateway process from the host. Run interactive CLI calls as the runtime user (`docker exec -u <runtime-user>`), never as root, or root-owned files can be silently ignored by the gateway.
+- **A read-only Docker socket mount protects nothing.** `:ro` covers the socket file, not the API behind it; anything that can reach the socket is close to host root. Log viewers and dashboards that need it should have actions disabled, bind to loopback, sit behind authentication, or use a read-only socket proxy.
+- **Size process and file limits for what the agent actually spawns.** Browsers and stdio MCP servers consume PIDs, file descriptors and shared memory quickly. Run Chromium/Playwright-type workloads in their own container, not inside the gateway's cgroup: a PID-cap hit there kills the gateway. After `can't start new thread` or a PID-cap death, recreate the container; restarting the service inside it does not reclaim leaked processes.
+- **Agents can exhaust container memory with ordinary file tools.** Reading every file whole across the data directory (which may contain a multi-gigabyte state database) can trigger the OOM killer. Prefer streaming reads, size checks before reads and per-command memory limits; encode this in the skill that performs scans.
+
+See [Reference Setup](setup-reference.en.md) for a worked container layout.
+
 ## 5. Separate trust zones with profiles—and know their limit
 
 A Hermes profile isolates Hermes state: config, `.env`, memory, sessions, skills, cron jobs, plugins, and gateway state. It does **not** sandbox the filesystem or the host user.
@@ -153,7 +162,12 @@ Useful separations include:
 - independent reviewer;
 - one profile per company or client.
 
-Never let two live Hermes processes write the same profile. If they need shared state, use an external canonical store with explicit concurrency semantics.
+Never let two live Hermes processes write the same profile. If they need shared state, use an external canonical store with explicit concurrency semantics. This includes sidecars: a dashboard or helper container started from the same image can bring up its own supervised gateway against the same data directory. Two gateways polling one bot token produce platform `Conflict` errors and dropped messages that look like an unrelated feature failure.
+
+Two further profile facts that change the baseline:
+
+- **A named profile does not inherit the default profile's values.** Leaves missing from a sparse profile `config.yaml` fall back to upstream defaults, which may be more permissive than the policy you set on the default home. Stamp the required policy keys into every profile and assert them per profile, not only for the default.
+- **Know whether your gateway is multiplexed.** Hermes can run one gateway process per profile or a single multiplexing gateway that serves every profile (`gateway.multiplex_profiles`). Official documentation describes multiplexing as opt-in; some recent builds have been observed migrating to it on upgrade. A multiplexed gateway is one crash domain and one cron scheduler for all profiles: a resource-limit hit or bad config takes every profile down. Check the effective mode after each upgrade and decide it deliberately.
 
 Set a deterministic starting directory:
 
@@ -198,6 +212,13 @@ hermes config set privacy.redact_pii true
 Redaction reduces accidental disclosure in context and logs. It does not stop a compromised process from reading a secret and sending it through an allowed network channel.
 
 Where possible, inject credentials only into the process that needs them. Prefer external secret managers or service-specific identities over a large ambient `.env`. Protect any local secret file with restrictive ownership and permissions.
+
+### Pitfalls observed in practice
+
+- **Removing a variable from subprocess environment is not a boundary.** Agent shells usually run as the same OS user as the gateway; they can read the Hermes `.env`, or start their own `hermes` CLI process that resolves every secret reference itself. Probe what an agent shell can actually obtain rather than trusting documentation that says it cannot. The enforceable boundary is the credential's provider-side scope.
+- **Custom `config set` keys are not secret storage.** Only recognized credential keys are routed to `.env`; an arbitrary key holding a token lands in plaintext in `config.yaml`, which may be mirrored to Git or included in backups. Pass secrets a subprocess needs through the environment (for example a container env passthrough) and secret-scan every automated commit or push, including bot commits that skip CI.
+- **External secret managers have budgets.** If secrets are resolved from a manager with a per-read rate limit, cost multiplies by profile × process start × refresh interval, and diagnostics such as `hermes doctor` or `config check` also resolve references. A spent budget can make a throttled refresh return "success" with empty values and overwrite working secrets: long-running chat (loaded at boot) keeps working while cron delivery and MCP servers fail. Use a long cache TTL, grouped reads, one shared backoff marker, a per-reference last-good fallback that is never used after an authentication failure and never resurrects a rotated or removed reference, cache-only mode for agent shells, and a budget check in health monitoring. Refuse a planned restart while the budget is spent.
+- **Keep backup credentials away from the agent.** Store the backup repository password and keys in a host-only file that is not mounted into the agent's container, so a compromised or confused agent cannot delete or prune backups. Add deny rules for backup-destruction commands as a second layer.
 
 Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
 
@@ -265,6 +286,12 @@ To reset them:
 hermes config set command_allowlist '[]'
 ```
 
+Audit each permanent entry for what it pre-approves, not what it was added for. An entry admitted for one routine job can pre-approve inline interpreter execution (`-c`/`-e` script bodies) for every session. Removing it may break unattended jobs that cannot answer prompts; that trade-off is an owner decision, recorded with its reason, not a silent default.
+
+Read back the **type** of any list-valued key you set from the command line. In practice a JSON list passed to `config set` has been stored as a YAML string: a deny list became a pattern matching everything, and a mention-pattern list silenced a group channel. Prefer `hermes config edit` or a YAML list in the file for structured values, then verify with `hermes config get`.
+
+**Policy is asserted, not locked.** If `config.yaml` is mirrored to Git or the agent can run `hermes config set`, an export or self-edit can flip approval leaves unnoticed; in practice a runtime export once turned `skills.write_approval` off. "Only the owner changes config" is policy, not a filesystem fact when owner and agent share a UID. Read the effective values with `hermes config get` after every deploy and fail the deploy on mismatch. Some forks bake a managed config seed; check whether it is a lock or only a default on your build rather than assuming either.
+
 Use `approvals.deny` for deterministic “never through this agent” commands. Quote YAML glob patterns. Deny rules protect against an honest-but-wrong agent; they do not contain an adversarial process with equivalent OS access.
 
 Before using a rule, test its verdict without executing the command:
@@ -284,6 +311,14 @@ hermes config set security.allow_private_urls false
 ```
 
 When enabled, web, browser, vision URL fetches, and gateway media downloads may reach loopback, RFC 1918, link-local, CGNAT, and cloud-metadata addresses. That can turn an injected URL into an internal-network probe.
+
+This setting alone does not close the browser path. When a cloud browser provider is configured, `browser.auto_local_for_private_urls` (on by default in current documentation) routes private URLs to a local browser instead of rejecting them. For profiles that must not reach the private network, also set:
+
+```bash
+hermes config set browser.auto_local_for_private_urls false
+```
+
+Then probe the deny path from the effective runtime.
 
 If a profile genuinely needs internal URLs:
 
@@ -354,6 +389,8 @@ A service bound to `0.0.0.0` inside a container is a risk signal, not proof of i
 6. rate limits;
 7. external reachability from an authorized scanner.
 
+On Linux, ports published by Docker are inserted ahead of host firewall rules such as `ufw`: a published port can be reachable even though the firewall appears to deny it. Bind published ports to `127.0.0.1` and reach them through an authenticated private ingress (a tailnet proxy, VPN, or authenticated reverse proxy), or enforce restrictions at the service itself.
+
 Dashboard, API, browser CDP, metrics, webhook, and noVNC endpoints should normally bind to loopback or a private authenticated network. Never expose browser CDP directly to the internet.
 
 Hermes' dashboard defaults to loopback; non-loopback use requires authentication and still needs host-level TLS/exposure verification. The API server is more consequential: it can expose the agent's effective tool authority, uses bearer authentication, and should keep an exact CORS allowlist rather than `*`. Test unauthenticated rejection and authorized readiness from outside the process.
@@ -368,6 +405,14 @@ hermes gateway install --force
 ```
 
 This regenerates the service unit and may interrupt service; preview and authorize it as an operational change.
+
+Any automatic restarter, built-in or home-grown, must:
+
+- stop gracefully with a grace period long enough to drain writes. A forced kill mid-write is a known trigger for state-database corruption and stale search indexes;
+- honor a deliberate stop. A watchdog that revives a container the owner stopped for repair can turn a recoverable problem into data loss;
+- alert instead of healing silently. Silent revivals hide a recurring fault until it becomes an outage.
+
+A host-level loop that runs `docker restart` on failed health checks usually violates all three.
 
 Keep the durable delivery ledger enabled unless a specific privacy or storage analysis rejects it:
 
@@ -407,6 +452,8 @@ mcp_servers:
 
 A server-supplied `readOnlyHint` is a hint, not proof. Prefer credentials and APIs that are technically read-only.
 
+For command-based (stdio) servers, verify after every image or dependency update that each enabled server's `command` still resolves, using the gateway's own environment and `PATH` rather than your shell's. An update that drops or moves a binary leaves the server failing on every boot while the gateway's health endpoint stays green.
+
 ### Plugins, skills, and context files
 
 - inspect before installing;
@@ -417,14 +464,17 @@ A server-supplied `readOnlyHint` is a hint, not proof. Prefer credentials and AP
 - keep `AGENTS.md` concise and project-specific;
 - put reusable procedures in `SKILL.md`, not in a giant project prompt;
 - review shell hooks explicitly; never use `--accept-hooks` as a casual default;
-- enable the agent-write gates in secure or client profiles:
+- shield the agent's working directory: project context files load first-match-wins from the working directory (`.hermes.md`, then `AGENTS.md`, `CLAUDE.md`, Cursor rules). If the agent works inside a repository whose `AGENTS.md` or editor rules were written for another tool, those become its instructions. A **non-empty** `.hermes.md` at that root takes precedence; an empty one falls through. See [Identity, Memory and Context](identity-memory-context.en.md);
+- decide the agent-write gates per profile:
 
 ```bash
 hermes config set skills.write_approval true
-hermes config set memory.write_approval true
+hermes config set memory.write_approval false   # see below
 ```
 
 - distinguish scanner acceptance from trust: pin and review extension provenance before activation.
+
+With `write_approval: true`, writes outside the interactive CLI are staged for an operator to approve. That is a sound default for skills, which are executable procedure. For memory it is a trade-off: in any profile that runs cron or other unattended work, nobody is present to approve, so staged writes accumulate and the job silently loses what it meant to remember. Practice has been `memory.write_approval: false` plus, for jobs that must not write memory at all, omitting the `memory` toolset from that job. Set `memory.write_approval: true` only where every writer is interactive, or where someone reviews `/memory pending` on a schedule.
 
 Project instructions, skills, comments, tickets, web pages, and documents do not inherit authority merely because the agent can read them.
 
@@ -455,6 +505,20 @@ hermes config set approvals.cron_mode deny
 
 Use script-only jobs when a deterministic script can produce the exact alert. Use an agent only when interpretation is required. For agent jobs, explicitly restrict toolsets instead of inheriting the full gateway surface.
 
+The stored toolset list is not necessarily the effective surface. Recent builds have been observed adding every globally enabled MCP server to a cron job unless the job's toolsets include the literal sentinel `no_mcp`; confirm on your version. Resolve the effective surface through the scheduler's own rule and test one allowed and one denied cross-lane action; a check that merely forbids the string `mcp` in the list is not enough.
+
+A dangerous command in a deny-mode cron job produces a pending approval that no one can answer. Treat it as a policy blocker to report, not a request to wait on; split compound commands so the safe part can proceed.
+
+Scheduling details that surprised practice (verify on your version):
+
+- interval schedules such as `every 1m` may be measured from the end of the previous run, so they drift; use a wall-clock cron expression when timing matters;
+- missed runs can be caught up after downtime (`catch_up_missed`), producing a burst of executions on restart;
+- unpinned jobs follow changes to the default model; pin the job model when cost or behavior matters;
+- completed one-shot jobs may be swept automatically after a retention period;
+- a deterministic monitor script whose unchanged output suppresses the agent turn is cheaper and more reliable than adding another poller.
+
+Test the failure-alert path end to end with a real message to the real destination. An alert that fails with a delivery error, or a scan left in report-only mode, can stay silent for weeks while the job looks configured. Background loops need a circuit breaker that pages after N consecutive failures. See the [runtime automation governance skill](../skills/runtime-automation-governance/SKILL.md) for the procedure.
+
 Cron sessions are fresh. Do not write prompts such as “continue that thing”; provide all required context or attach maintained skills. Use `workdir` when project instructions and repository context must load.
 
 ASSESS and VERIFY jobs must not persist findings, hostile source text, or recommendations into long-term memory unless a reviewed, structured persistence step is separately authorized. Otherwise an audit can become a cross-session prompt-poisoning mechanism.
@@ -467,7 +531,7 @@ hermes cron status
 hermes cron runs <job-id> --limit 20
 ```
 
-Never patch `cron/jobs.json` directly. Use `hermes cron`, `/cron`, or the `cronjob` tool.
+Change jobs through `hermes cron`, `/cron`, or the `cronjob` tool; do not hand-edit `cron/jobs.json` as a normal configuration path. One narrow exception has been needed in practice: where the CLI cannot set a job's `enabled_toolsets`, edit only that field, atomically (write a temporary file, then rename it into place), with the scheduler's file lock respected where one exists, then read the job back through `hermes cron list`. Re-check this on each version; prefer the CLI as soon as it supports the field.
 
 ## 13. Define outward-action boundaries
 
@@ -520,6 +584,13 @@ Practices:
 - give deletion authority to a separate, deliberate path;
 - periodically restore into an isolated target and exercise the real acceptance checks.
 
+Backups that restore:
+
+- **Verify the staged copy, not the job's exit code.** Copy SQLite state through a consistent method (the engine's backup API or the image's own `sqlite3`), run an integrity check on the staged copy, and never tag an unverified copy as known-good. In practice a tagged snapshot turned out to be corrupt when it was needed.
+- **Keep scratch out of the data home.** Test fixtures (including deliberately corrupt databases) and experimental stores inside the Hermes home inflate every snapshot, can fail the backup's own checks, and can crash-loop a new image's boot-time disk check. Exclude them, and keep a test proving the exclusions still match.
+- **Keep backup credentials host-only** (see section 6).
+- **Know how the session store grows.** Context compaction can re-insert carried-forward messages, so a store can hold the same tool output several times over; growth tracks compaction, not age, and age-based pruning frees little. Archive before pruning, verify that archived message IDs resolve, and keep built-in automatic pruning off where it offers no archive step. The [live state store maintenance skill](../skills/live-state-store-maintenance/SKILL.md) covers repair: never open a live write-ahead log from the host, never rebuild indexes under live writers, never restart a gateway that is already failing writes. Stop, copy and repair the copy.
+
 `hermes import` overwrites the target home and requires the target gateway to be stopped. A restore is therefore a separately authorized recovery transaction: use an isolated destination for drills, preserve owner access, and never point a test import at the live home.
 
 ## 15. Update without losing the runtime truth
@@ -528,6 +599,8 @@ First identify who owns the application code. The update route differs:
 
 - **Git/source install:** the Hermes CLI updates the checkout. Where supported, inspect `hermes update --check` (and `--plan` if your version offers it), then follow the backup guidance above and `hermes update --backup` where `--help` confirms it.
 - **Image-owned install (for example the official Docker image):** current documentation states that `hermes update` refuses image-owned code changes; the application is updated by replacing the image. Pin an exact version or digest, record the digest being replaced so it can be restored, back up the mounted data directory, then pull and recreate the container. The new image may migrate the mounted config on start; that migration is part of the change.
+
+**Rollback is not just re-pinning the old image.** A new image can migrate `config.yaml` and the state database forward, and older code may not read the result. A real rollback restores the pre-upgrade data snapshot (removing any leftover write-ahead/shared-memory files beside the database first) and then re-pins the previous digest. Keep the previous image locally: image prune modes treat digest-pinned images differently, and a pruned rollback target is a download you may not be able to make during an incident.
 - **Other packaging (Nix, managed services):** follow that owner's documented route.
 
 After either route, re-check the effective state:
@@ -544,7 +617,15 @@ hermes gateway status
 
 Distinguish upstream base, a fork's default branch, the chosen release source, the built image digest and the build actually observed running. A checked-out branch or a tag name is not proof of what is deployed; bind evidence to source SHA, image digest/provenance and exact-head CI where these exist, and do not invent receipts where they do not.
 
+A digest pin is a review checkpoint, not a vulnerability feed. Record an SBOM with each pin, rescan committed SBOMs against the current advisory database on a schedule (advisories can land hours after an image is published), give every ignore entry an expiry, run scanners in enforcing rather than report-only mode, and send supply-chain alerts to a channel the agent itself cannot reach or suppress.
+
 Then exercise the real paths affected by the update: one authorized gateway interaction, one file mutation in a disposable workspace, one MCP read, one scheduled-job canary, and any critical custom plugin or integration.
+
+A green health endpoint is not a working gateway. Each of these has been observed with health returning OK: a stdio MCP server whose command an update removed; `config.yaml` failing to parse, so the gateway ran on fallback defaults; a secret-manager budget exhausted at boot, so the messaging token was empty; exhausted provider credit or revoked provider auth; and the gateway's supervised service down while the container showed as running. Probe each explicitly.
+
+Upgrades can also rename or retire config keys. A renamed key may be ignored without a warning, and a migration may rewrite a setting you chose deliberately (gateway topology is one example). Read the release notes for removed and renamed keys, guard intentional settings with a post-deploy assertion, and confirm which key the running build actually reads. Retiring a feature or setting is an owner decision, not a side effect of the upgrade.
+
+Upgrade only when the agent is idle; a long-running session can take hours to finish, so wait in a detached job and re-check that the pre-upgrade snapshot is still fresh before proceeding. Run the snapshot and the upgrade as separate steps (a chained `snapshot && upgrade` can hide a refusal), and save the old container's logs before recreating it: they are the only crash or OOM evidence. The [operations guide](operations.en.md) has the full runbook, including host maintenance windows and supply-chain checks.
 
 Hermes updates may follow a moving branch. For exposed or client gateways, record the version/source being replaced, inspect or stage the update, and bind acceptance evidence to the version actually deployed—not merely to “latest.”
 
@@ -593,8 +674,11 @@ Write-denial tests are write attempts: if enforcement fails they can mutate data
 - an import drill uses an isolated home with its target gateway stopped;
 - a failed or interrupted external action produces an honest ambiguous state rather than an automatic duplicate;
 - gateway restart recovery is observed;
-- scheduled-job failure reaches an owner;
-- critical state stores pass their supported integrity checks.
+- scheduled-job failure reaches an owner, proven by a real test message;
+- critical state stores pass their supported integrity checks;
+- the effective approval and write-gate policy matches the intended values in every profile;
+- each enabled MCP server starts after the latest update, not only at initial setup;
+- a rollback has a restorable pre-upgrade data snapshot and a locally retained previous image.
 
 Lifecycle tests (restart, import, update, supervisor behavior) belong on a disposable deployment or external CI that reproduces the real supervisor and container layout. A temporary profile or Git worktree on the live host shares its process supervisor, PID 1, host Docker and live state; it is not an isolated lifecycle canary. Never exercise those tests against the active supervised gateway. A restore path that has not been exercised remains unverified.
 
@@ -626,7 +710,7 @@ Lifecycle tests (restart, import, update, supervisor behavior) belong on a dispo
 - web/document/email inputs treated as hostile;
 - read-only tools only;
 - no terminal or external communication unless a narrow workflow requires it;
-- private URLs disabled;
+- private URLs disabled, including the browser's local fallback;
 - outputs reviewed before entering canonical state.
 
 ### Privileged operator profile
@@ -652,7 +736,7 @@ Lifecycle tests (restart, import, update, supervisor behavior) belong on a dispo
 
 Do not call a deployment secure merely because:
 
-- `hermes doctor` is green;
+- `hermes doctor` or the health endpoint is green;
 - the model says it cannot access something;
 - a profile exists;
 - the process runs in Docker;

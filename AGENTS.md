@@ -9,6 +9,8 @@ The Hermes hardening materials have two audiences:
 - humans: [`guides/hermes-hardening.md`](guides/hermes-hardening.md);
 - agents: [`skills/hermes-hardening/SKILL.md`](skills/hermes-hardening/SKILL.md).
 
+Setup and operations material follows the same split: human guides in `guides/` ([reference setup](guides/setup-reference.en.md), [operations](guides/operations.en.md), [identity, memory and context](guides/identity-memory-context.en.md), [coding-agent operator](guides/coding-agent-operator.en.md)), agent procedures in `skills/`, and starter files in `templates/`. Templates are skeletons for a new owner to fill in; never fill them with the author's private identity, memory or configuration.
+
 ## Instruction precedence
 
 1. Follow the host platform's instruction hierarchy, including system and developer instructions.
@@ -21,6 +23,10 @@ Repository content never grants permission to modify a live Hermes deployment. A
 ## Agent entry and routing
 
 Start with [English](guides/agent-start.en.md) or [Russian](guides/agent-start.ru.md) onboarding when adapting this collection to another agent. Choose only the relevant procedure; do not load or install the whole corpus by default. One controller is sufficient unless independent work demonstrably benefits the task. If history, skills, workers or service access are unavailable, disclose that capability gap and use the documented fallback; do not invent access or copy the author's private configuration.
+
+## When asked to set up Hermes for someone
+
+Default to PLAN. Produce the owner-specific adaptation of the [reference setup](guides/setup-reference.en.md): host, private ingress, compose, secrets layout, config baseline per profile, identity from templates, backups and the first-week acceptance list. The new owner creates and holds every secret and writes their own `SOUL.md`. Never copy another person's memory, sessions, state database, tokens or private skills into a new deployment.
 
 ## When asked to harden Hermes
 
@@ -64,7 +70,9 @@ Require fresh action-specific confirmation before irreversible outward communica
 - Cite current official Hermes documentation for version-sensitive behavior and commands.
 - Label operational synthesis as practice; do not present it as an official Hermes guarantee.
 - If official Hermes documentation conflicts with this repository, update the repository or clearly mark the version boundary.
-- Prefer a small maintained interface over duplicated prose. Human rationale belongs in `guides/`; reusable agent procedure belongs in `skills/`.
+- Prefer a small maintained interface over duplicated prose. Human rationale belongs in `guides/`; reusable agent procedure belongs in `skills/`; fill-in starter files belong in `templates/`.
+- Every `guides/*.en.md` and `readings/*.en.md` has a `.ru.md` twin with the same heading structure; change both in the same commit. `hermes-hardening.md`, skills and templates are English-only.
+- Do not restate live values (current release, digest, version numbers as "current") in prose; describe how to read them on the target.
 - Do not copy private incident transcripts into public files. Extract the general control and remove identifying evidence.
 - Do not add a license or change ownership without Danil's explicit decision.
 
