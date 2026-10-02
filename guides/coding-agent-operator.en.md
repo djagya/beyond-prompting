@@ -27,7 +27,8 @@ The laptop checkout is the source of truth for *code*. The live container, its d
 - `docker ps` empty on the laptop means "Docker is not running here", not "the stack is down".
 - A local `data/` directory (often left over from testing a sync script) is stale. Never read it for runtime facts and never edit it expecting Hermes to see the change.
 - "Restart / update / deploy Hermes" means running the deploy script **on the box**, not `docker compose up` on the laptop. Local compose is only for compose-syntax or image-build debugging.
-- Reach the box only over your private network (for example Tailscale), never a public IP.
+- Reach the box only over your private network (for example Tailscale), never a public IP or LAN address.
+- Run the Hermes CLI through a wrapper that execs as the runtime user. The container starts as root, so a plain `docker exec` writes root-owned files that break the host's publish and backup jobs.
 
 Paste this into the ops repo's root `AGENTS.md` (or `CLAUDE.md`) and adjust:
 
@@ -39,13 +40,34 @@ Paste this into the ops repo's root `AGENTS.md` (or `CLAUDE.md`) and adjust:
 - Treat ./data/ as nonexistent: gitignored and stale. Never read it for runtime
   state, never edit it, never deploy from it. The live data dir is on <box>.
 - "Deploy / restart / update Hermes" means `./scripts/deploy.sh` run on <box>
-  over SSH. Never `docker compose pull/up/restart` by hand, here or there.
+  over SSH. Never `docker compose pull/up/restart` hermes by hand, here or
+  there: that skips the deploy guards and drops supervised service links.
 - Box access: private network only (`ssh <box>` via the tailnet). Never the
-  public or LAN address. If the host name is ambiguous, ask.
+  public or LAN address. If the host name is ambiguous, ask. If SSH prints an
+  approval URL (check mode), wait for the owner to approve it, then reuse the
+  connection (ControlMaster) so later commands do not re-prompt.
 - A quoted remote command does not receive a local heredoc. Use
-  `ssh <box> "bash -s" <<'EOF' ... EOF` and remember anything after the closing
-  quote runs locally.
+  `ssh <box> "docker exec -i <container> bash -s" <<'EOF' ... EOF`; a pipe or
+  command after the closing quote runs locally. `ssh -t` keeps remote output
+  in order.
+- Hermes CLI only via `./scripts/hermes-cli.sh` (runs as the runtime user);
+  never `docker exec` as root.
 - Runtime memory, cron jobs and live config change on <box>, not via git.
+
+## Working on the repo
+
+- Done means committed and pushed: run the test battery, `git pull`, commit
+  (Conventional Commits, task scope only; never secrets, data/ or scratch),
+  push, and state the branch and commit. Ask first only when a change is
+  irreversible or destructive beyond the task.
+- Before editing hermes/identity/, `git pull` first: the box's publish job
+  commits Hermes' own edits there.
+- Helper scripts stay inside this checkout: .scratch/ (gitignored) for
+  one-offs, scripts/ for keepers. Never /tmp, on the laptop or the box.
+- Bash orchestrates (docker, git, ssh); structured-data logic is a tested
+  Python module. A one-line `python3 -c` is fine; a heredoc program is not.
+- A change to compose, scripts or host config updates its doc in the same
+  commit.
 ```
 
 Why: an agent that believes the stack is down "fixes" it locally, or deploys stale data over live state.
@@ -54,7 +76,7 @@ Why: an agent that believes the stack is down "fixes" it locally, or deploys sta
 
 Write the mandate down once, in the repo or the agent's memory, so it does not ask at every gate.
 
-**Delegate end to end** (practice that worked): review, merge, build/publish the image, pin it and deploy, when tests and CI are green. "Done" means committed, pushed, deployed where the task requires it, and verified, with the branch and commit reported.
+**Delegate end to end** (practice that worked): review, merge, build/publish the image, pin it and deploy, when tests and CI are green. "Done" means committed and pushed (after running the test battery and a `git pull`), deployed where the task requires it, and verified, with the branch and commit reported. Uncommitted or unpushed work is not done. Ask first only when a step is irreversible or destructive beyond the task.
 
 **Keep with the owner**: policy and security posture (approval modes, allowlists, exposure), network topology, credential creation and rotation, anything public or outward-facing, irreversible deletion, and retiring an upstream setting the owner chose.
 
@@ -79,6 +101,8 @@ CI is the last gate, not the bug finder.
 | Empty commit to retrigger a path-filtered workflow | Nothing runs: no files changed | Re-run the workflow, or change a file in the filtered path |
 | Bot publish commits use skip-CI | Secrets in automated commits go unscanned | Run a secret scan (for example gitleaks) on every push, including skip-CI ones |
 | Deploy from a red `main` | Broken scripts reach the box | Deploy script refuses unless the deployed commit has green CI, allowing skip-CI only for known bot prefixes |
+| A bot that publishes agent-written *code* uses skip-CI | `main` looks untested and the deploy gate refuses the next deploy | Skip-CI only for bot commits whose content the deploy already gates (identity, evidence files); code publishes run CI |
+| Many CI jobs per push on a private repo | Each job bills at least a minute; frequent bot pushes exhaust the quota | One job with in-job lanes keyed on the diff, `paths-ignore` for bot-only files, cancel-in-progress, a job timeout |
 
 The deploy gate that refuses red CI caught real issues, including bot commits outside the allowlisted prefixes that had never been tested.
 
@@ -86,16 +110,19 @@ The deploy gate that refuses red CI caught real issues, including bot commits ou
 
 Shared checkouts collide: another editor's uncommitted edits end up in your commit, or another agent session switches the branch and your commit lands on the wrong one.
 
-- Give each coding-agent session its own `git worktree` (inside the repo's ignored scratch area, not `/tmp`).
+- Give each coding-agent session its own `git worktree` (inside the repo's ignored scratch area, not `/tmp`). The same goes for one-off helper scripts and logs: keep them in that scratch area, keepers in `scripts/`.
+- Before editing files Hermes also publishes (its identity tree), `git pull` first.
 - Before committing, check `git branch --show-current` and `git status`; stage paths explicitly.
 - Remove a finished worktree with `git worktree remove` on a clean tree, never `rm -rf`.
-- On the box, leave no uncommitted work: a dirty tree can stall Hermes' own publish job.
+- On the box, leave no uncommitted work: a dirty tree stalls Hermes' own publish job and the deploy. To persist one identity change on the box without racing the publish job, commit only the identity path and push.
+- On the box, never `git stash pop` after a pathspec `stash push` that printed "No local changes to save": it pops the *top* stash, possibly someone else's, and can drop conflict markers into live config. Check `git stash list` first.
 
 ## 6. Secrets never travel through chat
 
 - Never paste passwords, tokens or recovery codes into the agent conversation. If one was pasted, treat it as leaked: the owner rotates it.
 - Pass a secret to a command through stdin or an env var loaded from a file, never as an argument (arguments show up in process lists and shell history).
 - Prefer device-flow / browser logins that the owner completes, so the agent never sees the credential.
+- Never `hermes config set` a custom key holding a secret: unrecognised keys land plaintext in `config.yaml`, which the publish job mirrors into git. A secret a subprocess needs goes into the host's compose `.env` and an `environment:` passthrough.
 - Do not trust regex redaction of command output. A `sed` substitution without the global flag replaced only the first match on a line and leaked a token printed later. Better: never print the value.
 
 ## 7. Background watchers
@@ -132,7 +159,7 @@ After a change that affects Hermes (a fixed bug it reported, a new skill, a reti
 ssh <box> 'cd <ops-repo> && ./scripts/hermes-cli.sh -z "$(cat)"' < note.txt
 ```
 
-`hermes -z` is the documented scripted one-shot mode; `hermes-cli.sh` stands for your wrapper that runs the CLI inside the container as the runtime user. Verify the flag on your version. The prompt travels on stdin, so no quoting problems.
+`hermes -z` is the scripted one-shot mode: one prompt in, only the reply out. `hermes-cli.sh` stands for your wrapper that runs the CLI inside the container as the runtime user. The prompt travels on stdin, so no quoting problems.
 
 Start the note with `Operator note (from the coding agent):`, list the changes, and ask Hermes to verify each one itself before closing its own tasks and to reply with what it closed and what it kept. In one run it closed four items and kept five, with reasons; a note alone would have closed all nine.
 
@@ -159,9 +186,10 @@ A sweep like this found a lease cache that ignored identity (sensitive calls ran
 
 A maintenance window is not done when the deploy is green. Before closing it:
 
-- Encode each fix as a script guard, test or check first; prose only for what cannot be encoded.
-- Update the canonical doc that owns each fact (setup rationale, operator manual, health checks).
-- Write a short dated retrospective (what bit, what was fixed, what was left) and fold its durable items into canon in the same commit.
+- Encode each fix as a script guard, test or check first; prose only for what cannot be encoded. An *expected* failure is allowlisted and prints WARN; it never exits non-zero.
+- Update the canonical doc that owns each fact (setup rationale, operator manual, health checks). One home per fact; the others link to it.
+- No live state in canonical docs: no pins, digests, commit SHAs, job ids, "N-1 is…" or "until <date>". Point at the file or command that proves it. Never cite a gitignored scratch path from a tracked doc, and avoid version or stage names that expire.
+- Write a short dated retrospective (what bit, what was fixed, what was left), immutable after the session, and fold its durable items into canon in the same commit.
 - Sweep for docs the change made stale.
 
 The weekly version of this loop is [Weekly Learning Extraction](weekly-learning-extraction.en.md); the health-check side is in [Operations](operations.en.md).
@@ -173,6 +201,10 @@ You operate a Hermes deployment through this repo. Rules for this session:
 - This checkout is dev. Runtime lives on <box>; reach it only via `ssh <box>`
   over the private network. Never trust ./data/ or local docker state.
 - Deploy = ./scripts/deploy.sh on <box>. Never compose up/restart by hand.
+  Hermes CLI only through the wrapper that runs as the runtime user.
+- git pull before editing the identity tree (Hermes publishes into it).
+  Helper scripts stay in the repo's ignored scratch dir, never /tmp.
+  Infra changes update their doc in the same commit.
 - Mandate: you may review, merge, publish, pin and deploy when tests and CI are
   green. Ask me for policy, security posture, topology, credential rotation,
   public posts and irreversible deletion. If a permission check blocks you,
@@ -186,8 +218,10 @@ You operate a Hermes deployment through this repo. Rules for this session:
   to verify before closing its own items.
 - Batch changes into one restart; wait for the agent to be idle first.
 - Report as Done / Running / Needs you. Carry Needs-you until cleared.
-- Done = committed, pushed, deployed if required, verified, branch+commit stated.
-- Close the window: encode fixes, update canonical docs, write a dated retro.
+- Done = tests run, pulled, committed, pushed, deployed if required, verified,
+  branch+commit stated. Uncommitted or unpushed is not done.
+- Close the window: encode fixes, update canonical docs (one home per fact,
+  no live pins or ids in prose), write a dated retro.
 ```
 
 These are practice-derived rules from one deployment. Keep the ones that prevent a failure you can name in your own setup.

@@ -1,10 +1,10 @@
 ---
 name: live-state-store-maintenance
 description: Diagnose, back up, repair and shrink a live SQLite session/state store (for example Hermes state.db) without corrupting it. Use for "database disk image is malformed" errors, storage growth, full-text index problems, backup verification, or archive-then-prune retention.
-compatibility: Written against Hermes Agent's SQLite (WAL-mode) session store and its `hermes sessions` / `hermes backup` commands. Schema, command names and migrations are version-sensitive; confirm against current Hermes docs and CLI help.
+compatibility: Written against Hermes Agent's SQLite (WAL-mode) session store and its `hermes sessions` / `hermes backup` commands in a Docker install. Schema, command names and migrations move between releases — verify on your build (CLI help, live schema) before running one.
 metadata:
   author: Danil
-  version: "0.1.0"
+  version: "0.2.0"
   category: operations
   tags: hermes, sqlite, wal, fts, backup, recovery, retention
 ---
@@ -36,12 +36,13 @@ A request to "optimize storage" authorizes the named operation, not a new retent
 
 1. **Never open the live WAL database with a different SQLite.** A host `sqlite3` may embed a different (possibly defective) engine than the service. Diagnose a copy, made with the service's own engine or after the writer stopped.
 2. **Stop → copy → repair the copy.** Never "bounce" a service that is already failing writes to the store; a restart mid-storm can overwrite pages. Stop it cleanly, copy the database plus `-wal`/`-shm`, and work on the copy.
-3. **Nothing restarts the service under you.** Before any repair, disable or confirm absence of watchdogs, restart loops and cron jobs that could revive the writer. A watchdog that ignores a deliberate stop turns a repair into new corruption.
+3. **Nothing restarts the service under you.** Before any repair, disable or confirm absence of watchdogs, restart loops and cron jobs that could revive the writer. A watchdog that ignores a deliberate stop turns a repair into new corruption — which is why the install described here runs no gateway watchdog at all.
 4. **Clean shutdown is a precondition.** The supervisor's stop grace (container `stop_grace_period`, s6 kill grace, etc.) must exceed the service's real drain time. A killed writer can leave FTS marked stale; the next boot then rebuilds the index under live writes.
 5. **Rebuild FTS only offline.** A full-text rebuild under concurrent writers is a recurring corruption trigger in practice. Let a boot-time rebuild finish before touching the service again.
 6. **Salvage beats restore when canonical tables still read.** Restoring the last snapshot discards everything since; salvaging the live file keeps history up to the break.
 7. **If corruption recurs with clean shutdowns and no live rebuild, test the hardware** (overnight memory test, disk SMART) before blaming software.
 8. **Keep test fixtures and scratch databases out of the data home.** Corrupt fixtures there fail snapshots and boot-time disk checks; experimental copies bloat every backup.
+9. **Run the CLI as the service user.** In a container whose entrypoint drops privileges, a plain `docker exec` lands as root; files it writes into the data home end up root-owned and break the service. Use a wrapper that runs `docker exec -u <service-user>` with the service's home.
 
 ## Procedure
 
@@ -54,6 +55,9 @@ Authoritative (sessions, messages), derived (FTS shadow tables, caches), recover
 List every process that can write the store: gateway, scheduler, workers, maintenance CLI, backup helpers. For each, record the **embedded SQLite version actually loaded** (`python -c "import sqlite3; print(sqlite3.sqlite_version)"` inside the service's environment), not the package version. A defect that is concurrency-sensitive needs every concurrent writer above the fixed floor. At the time of writing, SQLite's WAL-reset fix shipped in 3.51.3 with backports in 3.50.7 and 3.44.6 — confirm against sqlite.org.
 
 ### 3. Diagnose on a copy
+
+First rule out a process-local split: if a store-backed tool fails inside the long-lived gateway but the same read succeeds in a fresh process against the same path, check the gateway's open file descriptors for **deleted** `-wal`/`-shm` handles. That is a stale WAL namespace in one process, not corruption; the fix is a clean gateway restart at a safe boundary (never from inside the agent's own turn), then prove the PID changed and the live tool path works. Continue below only if a fresh process also fails.
+
 
 Follow [`references/salvage-runbook.md`](references/salvage-runbook.md) steps 1–2: make a consistent copy, run `PRAGMA quick_check` on it, and map damaged b-tree root pages to object names via `sqlite_master.rootpage`.
 
@@ -77,11 +81,13 @@ Runbook steps 3–7: native commands first, `.recover` in a throwaway container 
 
 ### 6. Growth and retention
 
-See [`references/growth-and-backups.md`](references/growth-and-backups.md). In short: measure *what* is large before choosing a lever (on long-running agents, compaction duplicates often dominate, not age); try the non-destructive `hermes sessions optimize` first; run index-layout migrations (`hermes sessions optimize-storage`) in a dedicated window with writers stopped and a verified snapshot, never combined with an upgrade; prune only after archiving and verifying every message id resolves in the archive; keep built-in auto-prune off if it has no archive hook.
+See [`references/growth-and-backups.md`](references/growth-and-backups.md). In short: measure *what* is large before choosing a lever (on long-running agents, compaction duplicates often dominate, not age); try the non-destructive `hermes sessions optimize` first; run index-layout migrations (`hermes sessions optimize-storage`) in their own storage window with every writer stopped and a verified snapshot, **before** and never combined with an image upgrade; prune only after archiving and verifying every message id resolves in the archive; keep built-in auto-prune off if it has no archive hook. FTS compaction is not permission to prune sessions.
 
 ### 7. Backups that prove restorability
 
-A backup job that ran is not a restorable backup. Stage the store with the service's own engine, `quick_check` the staged copy, and only then tag it as good; an unverified copy must not carry the "good" tag. Note that Hermes' quick pre-update snapshot skips files over 1 GiB (documented), so a large session store may not be in it. Drill a restore on a schedule.
+A backup job that ran is not a restorable backup. Stage the store with the service's own engine (a one-shot helper container from the same image digest, staging outside the gateway's memory accounting), `quick_check` the staged copy, and only then tag it as good; a failed helper or check is a `WARN`, the rest of the backup still uploads, and the copy does not get the "good" tag. The built-in quick pre-update snapshot skips files over 1 GiB, so a large session store is not in it — before an image upgrade take your own runtime snapshot. Drill a restore on a schedule.
+
+A full-store copy you make is a leased artifact: record purpose, size, integrity evidence and a delete-after condition, keep it outside the data home's backup/archive trees (the offsite backup is the durable rollback), and delete it in the same task once the condition holds. An operator-only recovery directory is never yours to delete.
 
 ## Stop conditions
 

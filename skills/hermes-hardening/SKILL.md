@@ -1,10 +1,10 @@
 ---
 name: hermes-hardening
 description: Audit and harden Hermes deployments with verified controls.
-compatibility: Requires Hermes Agent, its current CLI, filesystem evidence, and access to official Hermes documentation.
+compatibility: Requires Hermes Agent, the target's own CLI and filesystem evidence; official Hermes documentation is a secondary reference.
 metadata:
   author: Danil and Sera
-  version: "0.1.0"
+  version: "0.2.0"
   category: security
   tags: hermes, security, hardening, deployment, audit
 ---
@@ -86,12 +86,11 @@ Use supported secret-entry mechanisms that keep passwords, payment credentials a
 
 For version-sensitive behavior:
 
-1. current official Hermes docs: <https://hermes-agent.nousresearch.com/docs/>;
-2. the target's current `hermes --help`, subcommand help, version, and resolved config;
-3. deployed source/runtime when docs and behavior differ;
-4. this skill and its references as operational synthesis.
+1. the target's own behaviour: its `hermes --help`, subcommand help, version, resolved config, and deployed source/runtime;
+2. this skill and its references. Their baseline is what the reference deployment behind this collection runs and asserts; behaviour that depends on its fork is marked "on the fork build used here";
+3. official Hermes docs (<https://hermes-agent.nousresearch.com/docs/>) as a secondary reference. A docs page can lag the build; for example, upstream documents a managed config scope as a lock, while on the fork build used here it is only a seed.
 
-If current docs or CLI contradict this skill, stop using the stale command, explain the discrepancy, and follow the current authoritative contract.
+If the target's CLI or resolved config contradicts this skill, stop using the stale command, record the discrepancy, and follow what the target actually does.
 
 ## Procedure
 
@@ -131,14 +130,14 @@ hermes cron list
 hermes security audit --fail-on high
 ```
 
-These commands are not automatically safe to paste into model-visible context. `status`, `doctor`, and integration inventories can expose partial credential fingerprints, user identifiers, paths, and topology. Use targeted queries or locally allowlist fields; retain only decision-relevant metadata in the report.
+`config check` and `doctor` resolve every secret reference; if secrets come from an external manager with a read budget, check the budget first and skip them while it is spent. These commands are not automatically safe to paste into model-visible context. `status`, `doctor`, and integration inventories can expose partial credential fingerprints, user identifiers, paths, and topology. Use targeted queries or locally allowlist fields; retain only decision-relevant metadata in the report.
 
 Also establish from the effective host/runtime:
 
 - OS identity and privilege;
 - process/service owner;
-- container/VM backend, capabilities, seccomp/no-new-privileges, resource limits (the official image starts as root to remap UID and then drops privileges; judge the gateway process's effective UID, not the container start user);
-- whether the gateway is per-profile or multiplexed, and whether any sidecar shares the data directory;
+- container/VM backend, capabilities, seccomp, resource limits (the image starts as root to remap UID and then drops privileges with `gosu`, and `no-new-privileges` breaks that remap; judge the gateway process's effective UID, `cap_drop: [ALL]` plus the minimal re-added set, and that seccomp is never `unconfined`). A plain `docker exec` into such a container lands as root: run every inspection command as the runtime user (`docker exec -u <runtime-user>`), or root-owned files it writes can break the gateway;
+- gateway topology: one multiplexed gateway serves every profile unless a profile sets `gateway.standalone: true` (`gateway.multiplex_profiles: false` is rewritten to `true` at boot); whether any sidecar starts a second gateway on the same data directory;
 - sensitive mounts and filesystem permissions;
 - listener bind addresses, host publishing, firewall, proxy, TLS/auth, and authorized external reachability;
 - credential sources by name/scope only;
@@ -146,8 +145,8 @@ Also establish from the effective host/runtime:
 - backup and restore state.
 - connected-browser profiles and authenticated sessions;
 - API, dashboard, webhook, CDP, metrics, and noVNC authentication/exposure;
-- persistent memory and skill-write policy, read per profile (named profiles fall back to upstream defaults, not the default profile's values);
-- effective cron toolsets, including globally enabled MCP servers a job may receive implicitly;
+- persistent memory and skill-write policy, read per profile (named profiles fall back to built-in defaults, not the default profile's values; `cron.catch_up_missed`, `gateway.auto_multiplex_migration` and `browser.auto_local_for_private_urls` default to `true`);
+- effective cron toolsets, including every globally enabled MCP server a job receives unless its toolsets include `no_mcp`;
 - secret source and its rate or read budget, if an external manager is used.
 
 Do not conclude that a listener is public from an in-container `0.0.0.0` bind alone. Do not conclude isolation from a profile or container label. Snapshot the assessed target before and after ASSESS; classify any runtime-generated state separately from configuration or business-data mutation.
@@ -228,7 +227,7 @@ Prefer supported commands over direct edits to Hermes live stores:
 - `hermes gateway` for service lifecycle;
 - `hermes skills` and `hermes plugins` for extensions.
 
-Never patch `cron/jobs.json`, pairing stores, auth files, or state databases as a normal configuration path. The one recorded exception: where the CLI cannot set a cron job's `enabled_toolsets`, propose an atomic edit of only that field with read-back through `hermes cron list`, marked version-dependent. Never invent a flag, binary location, config key, or restore command from memory. Resolve configured executable paths—Tirith defaults to PATH lookup through `security.tirith_path`—and mark a command unresolved if it cannot be verified on the target.
+Never patch `cron/jobs.json`, pairing stores, auth files, or state databases as a normal configuration path. The one exception: `hermes cron edit` cannot set a job's `enabled_toolsets`, so propose an atomic edit of only that field, as the runtime user, with read-back through `hermes cron list`; prefer the CLI once the target's build supports the field. Never invent a flag, binary location, config key, or restore command from memory. Resolve configured executable paths—Tirith defaults to PATH lookup through `security.tirith_path`—and mark a command unresolved if it cannot be verified on the target.
 
 Do not prescribe ownership or permission changes to business data until the intended access policy is established. When purpose is unknown, record `needs_decision` and present isolation options rather than classifying required access as a defect.
 
@@ -268,10 +267,11 @@ In APPLY mode:
 - do not rotate/revoke credentials before the replacement path works;
 - do not switch Tirith to fail-closed until the binary/platform path is verified;
 - do not disable runtime dependency installs until required features are provisioned;
-- do not restart a gateway merely because a file changed—establish whether restart is required;
+- do not restart a gateway merely because a file changed—establish whether restart is required. The gateway reads `config.yaml` only at boot, so a gateway-level config change takes effect after an authorized restart of the gateway service (in a container, the in-container supervisor restart, not a container recreate);
+- do not restart or recreate anything while an external secret manager's read budget is spent: the new boot comes up without secrets while health stays green;
 - do not install new extensions as a side effect of “hardening” unless included in scope.
 
-Stop if recovery becomes uncertain, the target drifts, a command conflicts with current docs/CLI, or an external outcome is ambiguous.
+Stop if recovery becomes uncertain, the target drifts, a command conflicts with the target's CLI or resolved config, or an external outcome is ambiguous.
 
 ### 9. Verify independently
 
@@ -295,7 +295,7 @@ At minimum verify:
 
 Run lifecycle mutation tests (restart, update, import, supervisor behavior) on a disposable deployment or external CI that reproduces the real supervisor/container layout—not on the active supervised gateway. A temporary profile or Git worktree on the live host shares its supervisor, PID 1, host Docker and state; it is not lifecycle isolation.
 
-For updates, establish code ownership first: a Git/source install updates through the Hermes CLI; an image-owned install (for example the official Docker image) is updated by replacing a pinned image—current docs state `hermes update` refuses image-owned code changes—so record the replaced digest for rollback. Bind deployment claims to the observed running build, not to a branch or tag name.
+For updates, establish code ownership first: a Git/source install updates through the Hermes CLI; an image-owned install is updated by replacing a pinned image (`hermes update` refuses image-owned code), so record the replaced digest for rollback. A rollback restores the pre-upgrade data snapshot when the new image migrated config or the state database, then re-deploys the previous release as a whole. Bind deployment claims to the observed running build, not to a branch or tag name.
 
 Never use real secrets as canaries. Never perform a real payment, message send, destructive action, or public submission merely to test a guard.
 
@@ -322,43 +322,45 @@ Do not say “secure” without scope. Prefer:
 
 ## Core Hermes baseline
 
-Use these only after confirming applicability and current CLI support:
-
-On versions supporting `approvals.unattended_mode`, include webhook/API programmatic sessions in the fail-closed check. Verify support on the target before applying; unsupported versions need an explicit external execution boundary, not an invented config key.
-
-Deny settings are not proof of enforcement on every terminal backend. Current official docs state that dangerous-command checks are skipped on container/sandbox backends (`docker`, `singularity`, `modal`, `daytona`, `vercel_sandbox`). Record separately where Hermes itself runs and the effective `terminal.backend` per profile; on sandbox backends assess the sandbox's mounts, credentials and egress instead. Obtain verdicts with `hermes approvals test` where supported; never execute a dangerous command to prove denial.
+Use these only after confirming applicability and the target's CLI support. The first block is what the reference deployment runs in its default home; its deploy and health sweep also assert the write-approval/cron trio, both browser private-URL leaves and `cron.catch_up_missed` on every named profile, because a sparse profile inherits permissive built-in defaults:
 
 ```bash
 hermes config set security.redact_secrets true
 hermes config set approvals.mode smart
 hermes config set approvals.cron_mode deny
-hermes config set approvals.single_query_mode deny
-hermes config set approvals.unattended_mode deny
+hermes config set skills.write_approval true
+hermes config set memory.write_approval false
 hermes config set security.allow_private_urls false
+hermes config set browser.allow_private_urls false
+hermes config set browser.auto_local_for_private_urls false
 hermes config set security.tirith_enabled true
-hermes config set gateway.delivery_ledger true
+hermes config set cron.catch_up_missed false
 ```
 
-Potentially stricter, deployment-dependent controls:
+`approvals.single_query_mode` and `approvals.unattended_mode` (webhook/API sessions) default to `deny`, and the durable delivery ledger (`gateway.delivery_ledger`) defaults to on; read them back rather than assuming. On a build without `approvals.unattended_mode`, programmatic sessions need an explicit external execution boundary, not an invented config key.
+
+Deny settings are not proof of enforcement on every terminal backend. Dangerous-command checks are skipped on container/sandbox backends (`docker`, `singularity`, `modal`, `daytona`, `vercel_sandbox`). Record separately where Hermes itself runs and the effective `terminal.backend` per profile; the reference runs `local` inside a hardened container, so approvals fire and the container is the boundary. On sandbox backends assess the sandbox's mounts, credentials and egress instead. Obtain verdicts with `hermes approvals test` where supported; never execute a dangerous command to prove denial.
+
+Deployment-dependent controls (the reference's choice in brackets):
 
 ```bash
-hermes config set privacy.redact_pii true
-hermes config set terminal.home_mode profile
-hermes config set security.allow_lazy_installs false
-hermes config set security.tirith_fail_open false
-hermes config set checkpoints.enabled true
-hermes config set skills.write_approval true
+hermes config set privacy.redact_pii true            # [on]
+hermes config set security.tirith_fail_open false    # [fail-closed]
+hermes config set checkpoints.enabled true           # [on]
+hermes config set terminal.home_mode profile         # [auto, with a separate child-process HOME at container level]
+hermes config set security.allow_lazy_installs false # [left on]
 ```
 
-The second block is not a blind baseline. Its controls can remove required context, shared CLI auth, runtime dependency installation, command availability, storage capacity, or immediate persistence of agent-created skills. Test before adopting.
+The second block is not a blind baseline. Its controls can remove required context, shared CLI auth, runtime dependency installation, command availability or storage capacity. Test before adopting.
 
-Do not recommend `memory.write_approval true` for a profile that runs cron or other unattended work: staged writes need an operator, so unattended memory writes accumulate unapproved and are effectively lost. Prefer `false` plus omitting the `memory` toolset from jobs that must not write memory; recommend `true` only where all writers are interactive or pending writes are reviewed on a schedule.
+`skills.write_approval true` stages agent-created skill writes for operator approval. Do not recommend `memory.write_approval true` for a profile that runs cron or other unattended work: staged writes need an operator, so unattended memory writes accumulate unapproved and are effectively lost. Keep `false` and omit the `memory` toolset from jobs that must not write memory; recommend `true` only where all writers are interactive or pending writes are reviewed on a schedule.
 
 Also check, per profile:
 
-- `browser.auto_local_for_private_urls false` where private URLs must stay blocked (otherwise they route to a local browser);
-- list-valued keys read back as lists, not strings;
-- effective policy matches intent after every deploy; mirrored config and agent self-edits can flip approval leaves.
+- list-valued keys read back as lists, not strings (stock `config set` has stored a JSON list as a YAML string, turning a deny list into deny-all); set them with `hermes config edit`;
+- `command_allowlist` entries are approval classes: the class `script execution via -e/-c flag` pre-approves every interpreter one-liner in every session. The reference accepts only that class (or an empty list) as an owner decision;
+- `approvals.deny` covers backup destruction and hook bypass where they apply; it is fnmatch over normalized command text and runs even in YOLO/off modes;
+- effective policy matches intent after every deploy: mirrored config and agent self-edits can flip approval leaves, and on the fork build used here the image's managed config seed is a default, not a lock. Assert the trio `skills.write_approval=true`, `memory.write_approval=false` and `approvals.cron_mode=deny` through `hermes config get` and fail the deploy on a mismatch.
 
 ## Guardrails and common failure modes
 

@@ -4,7 +4,7 @@ description: Delete caches, scratch trees, git worktrees, experiment outputs or 
 compatibility: Tool-agnostic (POSIX shell, git, any archive store with read-back). Application-managed state such as databases and checkpoint stores needs its own native procedure.
 metadata:
   author: Danil
-  version: "0.1.0"
+  version: "0.2.0"
   category: operations
   tags: cleanup, deletion, archives, disk, worktrees, fail-closed
 ---
@@ -24,6 +24,8 @@ Core invariant:
 
 > A path may be deleted only when it is classified as disposable, or its exact current bytes are recoverable from a named, verified archive member — and it is not part of a protected live surface.
 
+Archive proof and restore proof are different: the first shows the bytes are durable, the second that the remaining system can still be rebuilt or operated. Require both when the cleanup could remove operational recovery material (rebuild capsules, model registries, frozen controls).
+
 ## Modes and authority
 
 Default to **ASSESS**.
@@ -39,7 +41,7 @@ Default to **ASSESS**.
 
 | Tier | Examples | Gate |
 |---|---|---|
-| Regenerable | package-manager caches (npm, uv, pip), build caches, dangling images | Classify; confirm the tool recreates it; delete with mandate |
+| Regenerable | package-manager caches (npm, uv, pip), build caches, dangling image layers | Classify; confirm the tool recreates it; delete with mandate. Keep the previous release image (rollback target) — prune dangling layers only, never "all unused" |
 | Leased scratch | task workspaces, temp trees, forensic copies, local full-store snapshots | Lease must be closed: purpose done, nothing unique inside |
 | Git worktrees | per-task checkouts | `git worktree remove` on a clean tree only (below) |
 | Valuable payload | experiment outputs, media, generated corpora, logs with evidence value | Full archive gate (below) |
@@ -64,9 +66,9 @@ Check references from configs, scripts, registries and notes (e.g. a model path 
 
 ### 3. Git worktrees
 
-- Run git from a context that can see the worktree's gitdir (inside a container, paths recorded there may be invisible to host git; run as the owning user).
+- Run git from a context that can see the worktree's gitdir (inside a container, paths recorded there are invisible to host git; run as the owning user with its home).
 - Remove only when `git -C <worktree> status --porcelain` is empty: `git worktree remove <worktree>`. The branch stays.
-- Leave a dirty tree, and leave a detached HEAD whose commit is on no branch or remote (`git branch -a --contains <sha>` is empty) — report it instead.
+- Leave a dirty tree, and leave a detached HEAD whose commit is on no branch or remote (`git branch -a --contains <sha>` is empty) — report it instead. A task's worktree stays until its branch is on the remote and integration is verified.
 - Never `rm -rf` a worktree or any directory inside one; that deletes tracked files and leaves stale metadata. Finish with `git worktree prune --dry-run` to review.
 
 ### 4. Leased scratch
@@ -75,11 +77,11 @@ Every scratch tree or full-copy snapshot a task creates gets a lease: creator, p
 
 ### 5. Archive gate for valuable payloads
 
-1. Identity = normalized path + size + SHA-256 (not name, mtime or looks).
+1. Identity = normalized path + size + SHA-256 (not name, mtime or looks). Narrow exception: a re-downloadable model binary may count as recovered by an immutable upstream artifact when the exact source URL/revision, size and hash are recorded and re-verified before deletion — never for generated outputs, unique fine-tunes, private inputs or unpinned URLs.
 2. Map each candidate to an actual archive member with matching size and hash; open the real archive, not just an index CSV.
 3. Independently read back the remote archive (re-download or authenticated stream) — upload success is not durability.
 4. Missing from archive → stays **blocked**; close gaps with a separate, secret-scanned supplement archive, then re-read it back.
-5. Build and hash a manifest; store it durably **before** the first deletion.
+5. Build and hash a manifest; store it durably **before** the first deletion. If the archive authority is a git repository whose head or verified remote ref moves after the manifest is sealed, rebuild and re-read-back the manifest before deleting.
 
 Details, decision table and execution modes: [`references/manifest-and-execution.md`](references/manifest-and-execution.md).
 

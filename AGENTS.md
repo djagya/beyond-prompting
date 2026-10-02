@@ -69,7 +69,7 @@ Require fresh action-specific confirmation before irreversible outward communica
 - Keep public examples generic. Do not add private paths, hostnames, addresses, account identifiers, chat IDs, session IDs, client names, tracker keys, internal topology, or credentials.
 - Cite current official Hermes documentation for version-sensitive behavior and commands.
 - Label operational synthesis as practice; do not present it as an official Hermes guarantee.
-- If official Hermes documentation conflicts with this repository, update the repository or clearly mark the version boundary.
+- If official Hermes documentation conflicts with this repository, check the behaviour of the build the text describes: update the repository when it is wrong; when the docs lag the code or the fork build deviates, keep the behaviour and mark the version or fork boundary.
 - Prefer a small maintained interface over duplicated prose. Human rationale belongs in `guides/`; reusable agent procedure belongs in `skills/`; fill-in starter files belong in `templates/`.
 - Every `guides/*.en.md` and `readings/*.en.md` has a `.ru.md` twin with the same heading structure; change both in the same commit. `hermes-hardening.md`, skills and templates are English-only.
 - Do not restate live values (current release, digest, version numbers as "current") in prose; describe how to read them on the target.

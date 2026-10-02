@@ -66,3 +66,7 @@ Run id and timestamps; manifest path and hash; archive identifiers; every delete
 ## Reconciliation
 
 Deleted paths absent; protected paths present with matching hashes; archives still verify; no runtime resource orphaned; references to deleted paths updated to archive locations; trackers record totals and evidence location without closing unrelated acceptance criteria; remote evidence set has 0 missing / 0 extra / 0 mismatched.
+
+## Provider-backed remote volumes
+
+For cleanup on a remote model or data volume, the host's `df` is not the provider's quota. Before and after cleanup, read the provider-visible quota, run a real create/write/fsync/remove probe on the target volume, inventory every active runtime dependency (production, fallback, canary, repair, rollback) and keep those, and act only on the runtime identity the provider actually returned — never a configured or stale one. Stop any diagnostic runtime you started and keep its receipts.

@@ -41,7 +41,7 @@ SELECT type, name, rootpage FROM sqlite_master ORDER BY rootpage;
 
 ## 3. Native paths first (service stopped)
 
-Run the agent CLI as the service user, not root, against the stopped store:
+Run the agent CLI as the service user, not root, against the stopped store (in a container, `docker exec -u <service-user>` or a one-shot `docker run` of the same image — a plain `docker exec` lands as root and leaves root-owned files in the data home):
 
 ```bash
 hermes sessions repair

@@ -4,7 +4,7 @@ description: Gate any push, pull request, issue, comment, tag or release to a pu
 compatibility: Git and any public forge (GitHub, GitLab, Codeberg, etc.). Forge CLI commands are examples; confirm flags against current help.
 metadata:
   author: Danil
-  version: "0.1.0"
+  version: "0.2.0"
   category: security
   tags: git, public-repositories, provenance, privacy, pull-requests, publication
 ---
@@ -81,11 +81,17 @@ A clean triple-dot diff does not prove a current or correct base.
 
 ### 4. Upstream contributions from a fork
 
-A fork usually carries fork-only commits (CI overrides, branding, private config, release plumbing). Never open an upstream PR from the fork's default or release branch. Build a fresh branch from the **fetched upstream default branch** and apply only the intended delta; then confirm no fork-only file or hunk appears in `git diff "$BASE"...<candidate>`. Add a mechanical check for your fork's known overlay paths and make it block publication.
+An upstream PR from a fork is a public proposal, not a deploy: closing or rebasing it does not move your release pin, and a carryover with the same behaviour may already ship on your release line under a different SHA.
+
+A fork usually carries fork-only commits (CI overrides such as runner demotions, branding, private config, release plumbing). Never open an upstream PR from the fork's default or release branch. **Port** the delta onto the fetched upstream default branch in a disposable clone — do not cherry-pick the old PR SHA: a shallow fetch lacks its parents and explodes into a whole-tree diff, and upstream module splits leave old paths stale. Then confirm no fork-only file or hunk appears in `git diff "$BASE"...<candidate>`; a mechanical check for your fork's known overlay paths should exit non-zero and block publication. Refresh the PR body to the target's live template and report only tests you actually ran.
 
 Unmerged prerequisites: keep dependent work local until the prerequisite merges, then rebuild from the fresh base with only the proven delta — never blindly rebase the whole stack (squash-merged prerequisites never become ancestors).
 
-### 5. Audit every outgoing commit, not just the final tree
+### 5. Research overlap and relationship claims
+
+Search public issues, PRs, discussions and current code by behaviour, symbols, files and error text (not private tracker keys). Independent overlap is not automatically foreign, but relationship words must be exact: `Fixes`/`Closes` only for a full fix (audit every text surface for closing keywords), `Related to` for partial work, `Alternative to` or `Complementary` rather than claiming to supersede someone's open PR. Never close another contributor's PR without authority.
+
+### 6. Audit every outgoing commit, not just the final tree
 
 A secret added in commit A and deleted in commit B is still published. Scan the full outgoing range and all metadata:
 
@@ -97,16 +103,16 @@ gitleaks git --log-opts="$BASE..<candidate>"                      # example scan
 
 Also grep the range for your own private patterns (hostnames, internal paths, tracker keys, chat/account ids, personal emails) — generic scanners do not know them. Check branch and tag names, PR text, hidden Markdown link targets, screenshots/EXIF, logs, source maps and CI output. Scanner silence is not proof of absence; record what was and was not checked. A hit means reconstruct the range locally before the first push.
 
-### 6. Preview and authorize the envelope
+### 7. Preview and authorize the envelope
 
 State the envelope, reversibility and failure modes. An exact bounded instruction may authorize push and PR creation together; otherwise get action-specific authorization.
 
-### 7. Publish conservatively
+### 8. Publish conservatively
 
 - Push only the explicit ref: `git push <remote> <local-ref>:refs/heads/<remote-branch>`. Never `--mirror`, wildcard refspecs or `--tags`.
 - Force-push is forbidden by default. If authorized for an owned branch: record the expected old remote OID, keep a local archive ref, and use `git push --force-with-lease=refs/heads/<branch>:<old-oid> <remote> <local-ref>:refs/heads/<branch>`. Never force-push shared or upstream branches without the repository owner's authority.
 
-### 8. Read back from the remote
+### 9. Read back from the remote
 
 ```bash
 git ls-remote <remote> refs/heads/<branch>     # tip OID equals reviewed tip

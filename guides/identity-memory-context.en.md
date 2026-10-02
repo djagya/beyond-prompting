@@ -1,6 +1,6 @@
 # Identity, Memory and Context: What Your Agent Knows and Where It Lives
 
-**Independent field guide; not official Hermes or Nous Research documentation.** Hermes behaviour below is checked against the official docs where marked *documented*; everything else is *practice* from one long-running deployment. Version-sensitive details say "verify on your version".
+**Independent field guide; not official Hermes or Nous Research documentation.** It describes what one long-running deployment runs and enforces in its scripts. Where a behaviour is a feature of the fork build used there, the text says "on the fork build used here". On stock upstream, verify each section once on your build.
 
 A long-running agent knows things through several stores: a persona file, a topology file, two small memory files, a skill library, a notes vault and its own session history. Each has a different loader, cap and owner. Most "the agent forgot" or "the agent ignores my rule" problems are a fact sitting in the wrong store, or a store silently over its cap. This guide shows where each fact belongs and how to keep the stores honest when the agent edits its own identity.
 
@@ -8,26 +8,27 @@ A long-running agent knows things through several stores: a persona file, a topo
 
 ## 1. The prompt stack
 
-What the model sees at session start, roughly top to bottom:
+What the model sees at session start, top to bottom:
 
-| Slot | Source | Cap | Notes |
-| --- | --- | --- | --- |
-| Identity | `$HERMES_HOME/SOUL.md` only, never the working dir | context-file cap (documented: 20,000-char floor, scales with model context, `context_file_max_chars` overrides) | Injected verbatim after an injection scan. Empty file → built-in default identity. |
-| Topology | `$HERMES_HOME/ARCHITECTURE.md` | same 20k budget (practice) | **Observed in our build (a fork); verify on yours.** Not in the upstream docs. Loaded right after SOUL and in identity-bearing cron runs. |
-| Tool guidance | built in | — | — |
-| Skills index | names + descriptions only | — | Full skill loaded on demand (`skill_view`). |
-| Project context | first match from the working dir: `.hermes.md`/`HERMES.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules`/`.cursor/rules/*.mdc` | same cap, head/tail truncation | Only **one** type loads. Newer docs add `AGENTS.override.md` before `AGENTS.md`. |
-| Memory | `$HERMES_HOME/memories/MEMORY.md`, `USER.md` | `memory.memory_char_limit`, `memory.user_char_limit` (documented defaults 2,200 / 1,375) | **Frozen at session start.** Mid-session writes reach disk, not the prompt. |
-| Timestamp, platform hint, optional `/personality` overlay | built in / config | — | — |
+| # | Slot | Source | Cap | Notes |
+| --- | --- | --- | --- | --- |
+| 1 | Identity | `$HERMES_HOME/SOUL.md` only, never the working dir | 20,000 characters (see §4) | Injected verbatim. |
+| 2 | Topology | `$HERMES_HOME/ARCHITECTURE.md` | 20,000 characters | On the fork build used here. Profile-scoped and independent of the working directory; also loaded in identity-bearing cron runs that have no project context. |
+| 3 | Tool guidance | built in | — | — |
+| 4 | Memory | `$HERMES_HOME/memories/MEMORY.md`, `USER.md` | `memory.memory_char_limit`, `memory.user_char_limit` | **Frozen at session start**; silently truncated over the cap. This install sets both limits above the upstream defaults; read the effective values with `hermes config get`. |
+| 5 | Skills index | names + descriptions only | — | Full skill loaded on demand (`skills_list()` → `skill_view(name)`). |
+| 6 | Project context | first match from the working dir: `.hermes.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules` / `.cursor/rules/*.mdc` | `context_file_max_chars` when set, otherwise a model-scaled cap | Only **one** type loads (§5). |
+| 7 | Timestamp, platform hints | built in | — | — |
+| 8 | Optional `/personality` overlay | config | — | — |
 
-The documented order is three tiers: *stable* (SOUL, tool guidance, skills, platform hints) → *context* (project files) → *volatile* (memory, user profile, timestamp). Exact order has moved between releases; do not build anything that depends on it.
+The order has moved between releases; do not build anything that depends on it.
 
 What bites in practice:
 
-- **Silent truncation.** A file over the cap is cut. Current docs describe a 70% head / 20% tail split with a marker where the middle was removed; check how your version cuts. The agent sees only a marker, never the lost rules, and nobody else is alerted (our build logged it at debug level only).
-- **Memory over its limit.** The memory tool refuses a write past the limit (documented). A file edited by hand, or a lowered limit, can still leave it over; in our build the injected block was then truncated without warning. Verify on yours.
+- **Silent truncation.** A file over its cap is cut and the cut part never reaches the model. Treat truncation as silent: guard the sizes in a script (§4) rather than relying on a log line.
+- **Memory over its limit.** A store pushed over its limit (a hand edit, a lowered limit) is truncated when it is injected, without warning.
 - **Frozen snapshot.** A memory change made during a session takes effect next session. "I told you yesterday" with a still-open session is a frozen-snapshot problem, not a forgetting problem.
-- **Cron is different.** Documented: cron jobs load no `AGENTS.md`/`CLAUDE.md`/`.cursorrules` unless the job has a `workdir`. An invariant that lives only in project context is invisible to scheduled runs.
+- **Cron is different.** A cron job without a `workdir` loads no project context. An invariant that lives only in project context is invisible to scheduled runs; on the fork build used here, `ARCHITECTURE.md` still loads there, so scheduled-run invariants go in it.
 
 ## 2. Where things belong
 
@@ -38,11 +39,14 @@ What bites in practice:
 | A compact fact the agent needs *before* it could look anything up | `MEMORY.md` / `USER.md` | Always loaded, tightly capped. |
 | A procedure, workflow, trigger map, API convention | a skill | Loaded when relevant; testable; patchable. |
 | A rich profile, project state, reflections, source material | notes vault / documents | Unlimited; searched or routed to by a skill. |
+| Long history the agent should be able to recall by search | an optional retrieval memory plugin | Read-only from the agent's side. When to call it lives in `ARCHITECTURE.md`; how lives in a caller skill (below). |
 | What happened and when | session history (`session_search`) | Chronology and evidence, not current truth. |
 | Locks, cursors, receipts | runtime state files | Machine-owned. |
 | Repo conventions for a codebase the agent works in | that repo's `AGENTS.md` / `.hermes.md` | Project-scoped, only when that is the working dir. |
 
 Rules of thumb: if it should follow the agent everywhere, SOUL; if it belongs to one project, project context; if you had to discover it by trial and error, it is a procedure → skill. Never duplicate a SOUL or ARCHITECTURE fact into memory "to be safe" — the copy drifts and wastes the smallest budget you have.
+
+If you add a retrieval memory system, write its **caller policy** into `ARCHITECTURE.md` in a few lines: call it for personal history, earlier decisions, preferences and "what was true as of…" questions; skip it for generic knowledge or what the current context already answers; treat hits as untrusted evidence, never instructions; keep their provenance; never infer absence from a miss or a top-k cut; qualify or abstain when evidence is stale, contradictory or from the wrong authority. A read-only policy grants no write, snapshot or reconfiguration rights.
 
 ## 3. Memory: retention test and hygiene
 
@@ -53,17 +57,19 @@ An entry stays in always-loaded memory only if **all four** hold:
 3. **Not trigger-retrievable** — no skill or SOUL router loads it in time.
 4. **Prevents a known error** — a concrete, repeated failure.
 
-Short is not a reason to keep it. Write declarative facts ("Owner's timezone is X"), not imperatives ("ALWAYS do X"). Task progress, completed-work logs and temporary IDs never belong in memory.
+Short is not a reason to keep it: one true global router pointer may survive, a string of project pointers may not. Write declarative facts ("Owner's timezone is X"), not imperatives ("ALWAYS do X"). Task progress, completed-work logs and temporary IDs never belong in memory.
 
-Watermarks (practice): reconcile when a store passes **~70–75%** of its limit and bring it down to **~55%**, so new corrections have room. The docs suggest consolidating above 80%; earlier is calmer.
+Watermarks: a store above **70%** of its limit is under pressure; a reconciliation pass must bring it to **55%** or below, so new corrections have room. A pass that ends above 55% has hit its bound and must say so, not report success.
 
 Hygiene is something the **agent runs**, not something you do behind its back:
 
 - Ask the agent to run its hygiene procedure ([memory-skill-boundary-hygiene](../skills/memory-skill-boundary-hygiene/SKILL.md)): classify each entry as keep / compress / move to skill / move to vault / propose SOUL change / remove.
-- Hygiene only shrinks. It never adds entries.
+- Hygiene only shrinks. It never adds entries and never grows a store.
 - Move first, delete second: the destination (skill, note) is written **and read back** before the source entry is removed.
 - SOUL changes go through the owner's approval, never an unattended job.
 - Follow up next session: check the new usage figure in the memory header and that nothing global was lost.
+
+If you automate hygiene as a scheduled job, make it a guarded transaction, not a prompt: snapshot the exact preimages first; require a verified destination for every claim it removes; compensate back to the preimages if any step fails; cap the writes per run (for example one new note, three updated notes, two staged skill proposals); and end in an explicit status (no-op, mutated, bound hit, staged, aborted on drift, failed verification, partial mutation). An unattended run cannot edit active skills or SOUL: a procedure that needs a new skill becomes a staged proposal, and the memory entry stays until that proposal is approved. Such a job can stay off; a manual pass under the same contract is enough.
 
 If you must edit memory files directly (rare), do it atomically (write a temp file, rename it over the original, keep it owner-only `chmod 600`) and only between sessions.
 
@@ -72,88 +78,98 @@ If you must edit memory files directly (rare), do it atomically (write a temp fi
 Silent truncation is a script problem, not a discipline problem. Add a check to every deploy and to your periodic health check:
 
 ```bash
-# practice: WARN near the cap, FAIL (refuse the deploy) over it
+# WARN near the cap, FAIL (refuse the deploy) over it
 rc=0
 check() { # file warn_at cap
   [ -f "$1" ] || return 0
-  n=$(wc -m < "$1"); s=OK
+  n=$(wc -m < "$1"); s=PASS
   [ "$n" -gt "$2" ] && s=WARN
   [ "$n" -gt "$3" ] && { s=FAIL; rc=1; }
   echo "$s $(basename "$1"): $n/$3 chars"
 }
 check "$HERMES_HOME/SOUL.md"         18000 20000
 check "$HERMES_HOME/ARCHITECTURE.md" 10000 20000
+# hermes = your CLI wrapper, run as the runtime user (never root)
 mem=$(hermes config get memory.memory_char_limit | awk '{print $NF}')
 usr=$(hermes config get memory.user_char_limit | awk '{print $NF}')
-check "$HERMES_HOME/memories/MEMORY.md" $((mem * 75 / 100)) "$mem"
-check "$HERMES_HOME/memories/USER.md"   $((usr * 75 / 100)) "$usr"
+check "$HERMES_HOME/memories/MEMORY.md" $((mem * 90 / 100)) "$mem"
+check "$HERMES_HOME/memories/USER.md"   $((usr * 90 / 100)) "$usr"
 exit "$rc"
 ```
 
-Adapt the `awk` to your `config get` output (check `--json` on your version), and run `hermes` inside the container on a Docker install.
+Adapt the `awk` to your `config get` output.
 
 - Run it on the **git copy** before applying (refuse the deploy on FAIL) and on the **live copy** in the health check (the agent may have grown it).
-- `wc -m` counts whitespace Hermes strips, so it slightly over-counts; that errs safe.
-- If your build sets `context_file_max_chars`, use that value as the cap. Read the effective memory limits with `hermes config get` (this install's limits may differ from upstream defaults).
-- A WARN never exits non-zero; only a FAIL blocks.
+- Hermes strips surrounding whitespace before it counts; `wc -m` counts it, so it slightly over-counts. That errs safe.
+- 20,000 is the floor of the context-file cap. A build can raise the cap with `context_file_max_chars` or scale it with the model's window, but the guard keeps 20k as the hard limit so SOUL and ARCHITECTURE fit whatever model or config is live.
+- Memory WARNs within 10% of its limit (the hygiene watermarks in §3 act earlier). A WARN never exits non-zero; only a FAIL blocks.
 - Fix an over-cap SOUL by moving detail to skills or notes, not by raising the cap.
 
 ## 5. Project context: precedence and the hijack shield
 
 Only the first matching project file loads. That creates a quiet failure: if the agent's working directory is a notes vault or an unrelated repo that carries its own `AGENTS.md` or `.cursor/rules/`, **those become the agent's instructions** — written for a different tool and a different audience.
 
-Shield: put a **non-empty** `.hermes.md` at the root of the agent's working directory. It wins the precedence race, so nothing below it loads. An empty `.hermes.md` falls through to the next file (practice; verify on your version), so give it at least a few real lines: what this directory is, what the agent may and may not change there.
+Shield: put a **non-empty** `.hermes.md` at the root of the agent's working directory. It wins the precedence race, so nothing below it loads. An empty `.hermes.md` counts as absent and falls through to the next file, so give it at least a few real lines: what this directory is, what the agent may and may not change there.
 
 Checklist:
 
 - [ ] Agent working dir has a non-empty `.hermes.md`.
 - [ ] Nothing in that dir's `AGENTS.md`/`CLAUDE.md`/`.cursor/` is meant for this agent (if it is, move it into `.hermes.md`).
-- [ ] Context files contain no hidden HTML comments or invisible characters — the injection scanner blocks the whole file (documented).
+- [ ] Context files contain no hidden HTML comments or invisible characters — the injection scanner blocks the whole file.
 - [ ] Cron jobs that need project context have a `workdir`; everything else they need is in SOUL/ARCHITECTURE/skills.
 
 ## 6. Skills and the other executable surfaces
 
 - A skill is a **procedure**: `skills/<category>/<name>/SKILL.md` with frontmatter `name:` equal to the directory name and a `description:` that says *when* to load it.
-- Progressive disclosure (documented): the prompt carries only the index; `skill_view(name)` loads the body; `skill_view(name, path)` loads a reference file.
-- **Write approval.** `skills.write_approval: true` stages every agent skill write for review (`/skills pending`, `/skills diff`, `/skills approve|reject`). Recommended: on for skills, **off** for memory (`memory.write_approval: false`) — scheduled jobs have no operator to approve, so a staged memory write deadlocks them. Forbid memory writes per job by omitting the `memory` toolset instead.
-- These settings live in a config the agent can edit. Treat them as **asserted, not locked**: read the effective values back on every deploy (`hermes config get skills.write_approval`) and fail on a mismatch.
+- Progressive disclosure: the prompt carries only the index; `skill_view(name)` loads the body; `skill_view(name, path)` loads a reference file.
+- **Write approval.** `skills.write_approval: true` stages every agent skill write for review (`/skills pending`, `/skills diff`, `/skills approve|reject`). Keep it on for skills and **off** for memory (`memory.write_approval: false`): scheduled jobs have no operator to approve, so a staged memory write never completes. Forbid memory writes per job by omitting the `memory` toolset instead.
+- These settings live in a config the agent can edit. Treat them as **asserted, not locked**: read the effective values back on every deploy (`hermes config get skills.write_approval`) and fail on a mismatch. The fork build used here also bakes a managed seed for these leaves; it fills only missing leaves, and `hermes config set` still overrides it, so it is not a lock either.
 
-Keep each surface separate (practice):
+Keep each surface separate:
 
 | Surface | What it is | Not |
 | --- | --- | --- |
-| Skill `scripts/` | helpers the skill runs | a copy of a cron adapter or plugin |
-| Cron adapter | the script a scheduled job names; documented: it must resolve inside `$HERMES_HOME/scripts/` (we name it by basename) | a skill |
-| Plugin | `$HERMES_HOME/plugins/<name>/` with its manifest | nested under a skill (not loaded there) |
+| Skill `scripts/` | helpers the skill runs from its own tree | a copy of a cron adapter, plugin, hook or service launcher |
+| Cron adapter | the script a scheduled job names. Hermes cron rejects absolute paths, so the job names a **basename** that resolves under `$HERMES_HOME/scripts/` | a skill |
+| Plugin | `$HERMES_HOME/plugins/<name>/` with a flat manifest; Hermes loads plugins only from there | nested under a skill (not loaded there) |
 | Hook | event handler in the hooks dir | a procedure |
+| Service launcher | a supervised service directory (s6 on the Docker image) under `$HERMES_HOME/services/<name>/` | a second supervisor or a watchdog for what Hermes already supervises |
+
+Identity sync is the copy: it puts adapters, plugins, hooks and launchers in place. A skill's helper may hash or verify them, never copy onto those runtime directories.
 
 ## 7. Identity in git with a self-editing agent
 
-Keep the identity (SOUL, ARCHITECTURE, config, skills, hooks, plugins) in git so it is reviewable and recoverable. The agent will also edit it at runtime. Two writers need a protocol, or one silently erases the other.
+Keep the identity (SOUL, ARCHITECTURE, config, skills, hooks, plugins, cron adapters, service launchers) in git so it is reviewable and recoverable. The agent will also edit parts of it at runtime. Two writers need a protocol, or one silently erases the other.
+
+Three file classes: **mirrored files** (`SOUL.md`, `ARCHITECTURE.md`, `config.yaml`) are written from both sides; **tracked dirs** (skills, hooks, plugins, avatars) are applied per file and exported back; **apply-only dirs** (cron adapters, service launchers) go git → runtime only, are never exported, and the apply overwrites them.
 
 | Rule | What it prevents |
 | --- | --- |
-| **Git owns identity.** Operator edits: pull → edit → commit → push → deploy applies. | Untracked drift. |
+| **Git owns identity.** Operator edits: pull first (the publish job commits the agent's edits on its own) → edit → commit → push → deploy applies. | Untracked drift; conflicts with the agent's latest publish. |
 | **Apply is additive.** Git → runtime copies per file; never deletes runtime files. | Wiping agent-created skills. |
-| **Publish mirrors back.** A scheduled job exports runtime edits, commits, rebases and pushes. Commits may skip CI but still get a secret scan. | Agent edits existing in one place only. |
+| **Publish mirrors back.** A scheduled job exports runtime edits, commits, rebases and pushes. Its commits may skip CI, so it runs a pinned secret scanner over the outgoing range itself; a finding drops the commit and pushes nothing. | Agent edits existing in one place only; unscanned secrets on the remote. |
 | **Three-way marker.** Record the checksum of the git copy last applied. Runtime ≠ marker → the agent edited it; git ≠ marker → the operator did. | Guessing who changed what. |
-| **Refuse on both-sides change.** Same file changed on both sides since the marker → the apply refuses and names the file. Human merges; a force switch exists but is a deliberate "git wins". | A deploy silently reverting the agent's newer edits. |
-| **Accept what git has committed.** A runtime file that matches any version committed since the last apply is published, not a conflict; content git never saw is. | False conflicts after a publish. |
+| **Refuse on both-sides change.** The same file changed on both sides since the marker → the apply refuses and names the file. The check lives in the apply script itself, so every path (direct run, deploy, upgrade, publish job) refuses. Human merges; a force switch exists but is a deliberate "git wins". | A deploy silently reverting the agent's newer edits. |
+| **A one-sided runtime edit is kept.** A runtime edit on a file git did not change is left in place and published on the same tick; it does not block the apply. | False refusals that stall both directions. |
+| **Committed bytes are not a conflict.** A runtime file whose exact bytes git itself committed between the last apply and the current head was published and then superseded; the apply overwrites it with the head and loses nothing. Only bytes git never committed refuse. | A deploy refused because the agent's already-published edit was edited again in git. |
+| **The applied-tree marker guards the export.** Record the identity commit the runtime last received. The publish job applies a git-ahead tree before it exports, and refuses to export while git is still ahead, so pull order on the host does not matter. | A retried publish committing a stale runtime over freshly pushed files. |
 | **One lock for both directions.** Publish skips its tick if apply holds it; apply waits, then fails closed. | Exporting a half-copied tree. |
-| **Explicit retire.** A retire command deletes a path from git and runtime together; the publish refuses to recreate a retired path. | Inferring deletion from absence (one such script once wiped dozens of skills). |
+| **Explicit retire.** A retire command deletes a path from git and runtime together; commit, push and re-run the apply so the marker catches up. The publish refuses to recreate a path some commit deleted. | Inferring deletion from absence (one such script once wiped dozens of skills). |
 | **No conflict markers.** Publish refuses to commit `<<<<<<<` in identity files. | Markers landing in the live config. |
+| **Config schema gate.** The apply refuses a git `config.yaml` whose schema version is newer than the release expects, and defers one newer than the live runtime until the image upgrade. | A new-schema config landing on a still-running older image. |
 | **Seeds are runtime-owned.** Files git seeds once (e.g. a cron jobs list) belong to the runtime after first apply. | Git overwriting live schedules. |
 
-What does **not** deploy via git: cron jobs (change them with the CLI on the host), memory (agent tool or careful host edit), secrets (host `.env` only). And because the config is mirrored, a runtime `config set` can flip a policy leaf that the publish then commits — hence the deploy-time assertion in §6.
+What does **not** deploy via git: cron jobs (change them with the CLI on the host; the publish job copies them back to the seed; a field the CLI cannot set, such as a job's toolsets, is edited in the jobs file atomically), memory (agent tool or careful host edit), secrets (host `.env` only). And because the config is mirrored, a runtime `config set` can flip a policy leaf that the publish then commits — hence the deploy-time assertion in §6.
 
 Failure → symptom → fix:
 
 | Failure | Symptom | Fix |
 | --- | --- | --- |
-| Export broken (push key, dirty tree) | Agent edits stop appearing in git | Alert after N consecutive publish failures; fix the tree, don't force |
+| Export broken (push key, dirty tree) | Agent edits stop appearing in git | Alert after N consecutive publish failures (five here); fix the tree, don't force. The job's recovery restores only the identity dir, never a repo-wide reset that would discard unrelated work |
 | Apply ran without the both-sides check | Agent's recent skill edits vanished | Put the check inside the apply script itself, so every path is covered |
 | Deletion done only in git | Deleted skill reappears next publish | Use the retire command |
 | Same key edited on both sides | Publish rebase conflict, repeats | Merge by hand on the host; the job restores and reports |
+| Export log says git is ahead of the runtime | Publish keeps refusing | The apply did not land: either a both-sides refusal (merge that file) or a deferred config schema (wait for the upgrade) |
 
 ## 8. Propagating a correction to every owner
 
@@ -163,10 +179,10 @@ A correction ("we no longer use X", "that channel is private") usually lives in 
 
 When you change something the agent owns or tracks (a skill it maintains, a task it filed, a rule it follows), tell it rather than letting it discover the drift.
 
-- Send a **one-shot, labelled operator note**: `hermes -z` takes one prompt and prints only the reply (documented). Pipe the note on stdin so nothing needs quoting:
+- Send a **one-shot, labelled operator note**: `hermes -z` takes one prompt and prints only the reply. Pipe the note on stdin through your CLI wrapper (it runs the CLI inside the container as the runtime user), so nothing needs quoting:
 
   ```bash
-  ssh <host> 'cd <repo> && hermes -z "$(cat)"' < operator-note.txt
+  ssh <host> 'cd <ops-repo> && ./scripts/hermes-cli.sh -z "$(cat)"' < operator-note.txt
   ```
 
 - Start the note with "Operator note (from <who>)", list what changed, and ask for a short reply of what it did.
@@ -179,8 +195,8 @@ When you change something the agent owns or tracks (a skill it maintains, a task
 - **They write their own SOUL** — or the agent drafts it from a conversation with them and they approve it. Your agent's voice is tuned to you.
 - **Never copy your memory, USER profile, notes or personal skills.** Start memory empty; it fills from their corrections.
 - Ship only genuinely generic skills (governance, hygiene, runtime debugging). Personal skills go in a private overlay, if anywhere.
-- Set the policy trio on day one — `skills.write_approval: true`, `memory.write_approval: false`, `approvals.cron_mode: deny` (cron cannot self-approve dangerous commands) — and assert it on every deploy.
-- Give their agent its own data directory and profile. One agent per data directory.
+- Set the policy trio on day one — `skills.write_approval: true`, `memory.write_approval: false`, `approvals.cron_mode: deny` (cron cannot self-approve dangerous commands) — in every profile, and assert it on every deploy ([setup reference §8](setup-reference.en.md#8-initial-config-baseline)).
+- Give their agent its own data directory and profile. One gateway per data directory.
 - Add the size guard (§4) and the hijack shield (§5) before the first real session.
 
 Related: [setup patterns](setup-patterns.en.md), [hardening guide](hermes-hardening.md), [Principles §9](../readings/principles-from-hermes-in-practice.en.md#9-convert-experience-into-procedural-competence).
