@@ -50,7 +50,7 @@ Never record secret values. Evidence should identify the command, source, timest
 | --- | --- | --- |
 | HRD-030 | Effective tools are minimized per profile and platform. | `hermes tools --summary`; effective tool list. |
 | HRD-031 | Interactive approval mode is `smart` or `manual`. | `hermes config get approvals.mode`. |
-| HRD-032 | Cron, one-shot and supported unattended API/webhook sessions fail closed. | `approvals.cron_mode=deny`, `approvals.single_query_mode=deny`, supported `approvals.unattended_mode=deny`; applicable non-mutating verdict checks. |
+| HRD-032 | Cron, one-shot and supported unattended API/webhook sessions fail closed. | `approvals.cron_mode=deny`, `approvals.single_query_mode=deny`, supported `approvals.unattended_mode=deny`; effective `terminal.backend` per profile (container/sandbox backends skip dangerous-command checks per current docs); non-mutating `hermes approvals test` verdicts. Never execute a dangerous command to test denial. |
 | HRD-033 | YOLO is absent from services, aliases, and privileged automation. | Service unit/launcher inspection. |
 | HRD-034 | Permanent command allowlist is reviewed and narrow. | `command_allowlist` inspection; approval-history review. |
 | HRD-035 | Deterministic deny rules exist for prohibited actions when useful. | Config plus `hermes approvals test`; note that this is not a sandbox. |
@@ -82,7 +82,7 @@ Never record secret values. Evidence should identify the command, source, timest
 | HRD-054 | Shell hooks are explicitly reviewed and authorized. | Hook inventory and consent state. |
 | HRD-055 | Supply-chain audit runs after install/update/extension changes. | `hermes security audit` result and disposition. |
 | HRD-056 | Runtime dependency installation policy is explicit. | `security.allow_lazy_installs` plus provisioned dependency test. |
-| HRD-057 | Connected-browser authority is separated from hostile ingestion; arbitrary evaluation and website policy are decided. | Browser-profile inventory, `browser.restrict_evaluate`, website policy, authenticated-session test. |
+| HRD-057 | Connected-browser authority is separated from hostile ingestion; arbitrary evaluation and website policy are decided. | Effective browser driver/backend (including `browser_exec`, which runs model-written Python and requires terminal access), browser-profile inventory, `browser.restrict_evaluate` (a primitive-name denylist, not a sandbox), website policy, authenticated-session test. |
 | HRD-058 | Agent-created persistent skill writes require an explicit owner policy/gate. | `skills.write_approval` decision and denied-write canary. |
 
 ## G. Automation and state

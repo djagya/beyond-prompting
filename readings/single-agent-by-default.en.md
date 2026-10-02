@@ -144,7 +144,7 @@ child explores a large corpus
 
 This reduces the “game of telephone” described by Anthropic: specialist output survives without being repeatedly summarized through coordinators.[3]
 
-A summary cap should be treated as a handoff limit, not as a substitute for durable evidence. If omitted detail matters, store it and return a reference.
+A summary cap should be treated as a handoff limit, not as a substitute for durable evidence. If omitted detail matters, store it and return a reference. Write such artifacts only to a destination the mandate authorizes; a read-only child returns findings and source locators in its reply, and private evidence never goes into a public checkout.
 
 ## 7. Keep the hot path short
 
@@ -175,7 +175,7 @@ A useful configuration posture is:
 - enough iterations for long research or implementation;
 - bounded concurrency;
 - shallow or disabled nesting;
-- no wall-clock timeout unless operationally necessary;
+- an explicit time and cost budget with stop conditions, cancellation and a checkpoint, rather than an arbitrarily short timeout; do not disable limits that protect a live system;
 - artifact-backed handoffs when summaries may truncate.
 
 The controller should still decide whether a child should exist at all.

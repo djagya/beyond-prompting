@@ -284,11 +284,15 @@ At minimum verify:
 - dangerous-command denial in cron/one-shot contexts;
 - provider-side rejection of out-of-scope writes, only using an authorized disposable target or non-mutating validation endpoint;
 - prompt-injection/secret-canary behavior;
-- backup restore on an isolated target;
+- backup restore on an isolated target (an unexercised restore stays unverified);
 - gateway/service recovery when restart is in scope;
 - critical cron and integration canaries;
 - no unrelated profile/client/state changed.
 - no unapproved persistent-memory or target-local evidence writes occurred.
+
+Run lifecycle mutation tests (restart, update, import, supervisor behavior) on a disposable deployment or external CI that reproduces the real supervisor/container layout—not on the active supervised gateway. A temporary profile or Git worktree on the live host shares its supervisor, PID 1, host Docker and state; it is not lifecycle isolation.
+
+For updates, establish code ownership first: a Git/source install updates through the Hermes CLI; an image-owned install (for example the official Docker image) is updated by replacing a pinned image—current docs state `hermes update` refuses image-owned code changes—so record the replaced digest for rollback. Bind deployment claims to the observed running build, not to a branch or tag name.
 
 Never use real secrets as canaries. Never perform a real payment, message send, destructive action, or public submission merely to test a guard.
 
@@ -318,6 +322,8 @@ Do not say “secure” without scope. Prefer:
 Use these only after confirming applicability and current CLI support:
 
 On versions supporting `approvals.unattended_mode`, include webhook/API programmatic sessions in the fail-closed check. Verify support on the target before applying; unsupported versions need an explicit external execution boundary, not an invented config key.
+
+Deny settings are not proof of enforcement on every terminal backend. Current official docs state that dangerous-command checks are skipped on container/sandbox backends (`docker`, `singularity`, `modal`, `daytona`, `vercel_sandbox`). Record separately where Hermes itself runs and the effective `terminal.backend` per profile; on sandbox backends assess the sandbox's mounts, credentials and egress instead. Obtain verdicts with `hermes approvals test` where supported; never execute a dangerous command to prove denial.
 
 ```bash
 hermes config set security.redact_secrets true

@@ -240,6 +240,8 @@ hermes config set approvals.unattended_mode deny
 
 On versions supporting `approvals.unattended_mode`, include webhook/API programmatic sessions in the fail-closed check. Verify support on the target before applying; unsupported versions need an explicit external execution boundary, not an invented config key.
 
+These settings do not prove fail-closed behavior on every terminal backend. Current official documentation states that dangerous-command checks are skipped on container and sandbox terminal backends such as `docker`, `singularity`, `modal`, `daytona` and `vercel_sandbox`, because that backend is treated as the boundary. Keep two questions separate: where the Hermes process itself runs (for example an outer Docker container) and which `terminal.backend` executes agent commands. For each profile, read the effective terminal backend and use `hermes approvals test` where supported to obtain a verdict without execution; then assess the actual isolation of the sandbox backend (mounts, credentials, egress) rather than counting the deny settings as enforcement. Never run a dangerous command to prove that it is denied.
+
 For high-consequence interactive administration, consider `manual` instead of `smart`.
 
 Avoid:
@@ -312,7 +314,7 @@ For controlled environments, disable runtime dependency installation after requi
 hermes config set security.allow_lazy_installs false
 ```
 
-Connected browser mode can act inside authenticated sessions. Use a dedicated low-privilege browser profile for hostile content, keep logged-in administrative sessions away from low-trust ingestion, and consider `browser.restrict_evaluate` to disable arbitrary page-JavaScript evaluation while preserving structured browser actions. Review `security.website_blocklist`, but do not mistake a domain blocklist for prompt-injection containment or network egress policy.
+Connected browser mode can act inside authenticated sessions. Use a dedicated low-privilege browser profile for hostile content, keep logged-in administrative sessions away from low-trust ingestion, and consider `browser.restrict_evaluate`. That option is a name-based denylist of sensitive JavaScript primitives (cookies, storage, clipboard, network calls, form values) for page evaluation; it does not disable arbitrary JavaScript and is not a sandbox. First establish which browser driver and backend actually apply: in current documentation the default Browser Use mode exposes `browser_exec`, which runs model-written Python and is offered only to sessions that also have terminal access, so terminal and browser authority must be assessed together. Review `security.website_blocklist`, but do not mistake a domain blocklist for prompt-injection containment or network egress policy.
 
 ## 10. Secure gateway access and exposed services
 
@@ -522,12 +524,16 @@ Practices:
 
 ## 15. Update without losing the runtime truth
 
-A safe update sequence:
+First identify who owns the application code. The update route differs:
+
+- **Git/source install:** the Hermes CLI updates the checkout. Where supported, inspect `hermes update --check` (and `--plan` if your version offers it), then follow the backup guidance above and `hermes update --backup` where `--help` confirms it.
+- **Image-owned install (for example the official Docker image):** current documentation states that `hermes update` refuses image-owned code changes; the application is updated by replacing the image. Pin an exact version or digest, record the digest being replaced so it can be restored, back up the mounted data directory, then pull and recreate the container. The new image may migrate the mounted config on start; that migration is part of the change.
+- **Other packaging (Nix, managed services):** follow that owner's documented route.
+
+After either route, re-check the effective state:
 
 ```bash
-hermes update --check
-hermes backup --quick --label pre-update
-hermes update --backup
+hermes --version
 hermes config check
 hermes doctor
 hermes security audit --fail-on high
@@ -535,6 +541,8 @@ hermes tools --summary
 hermes mcp list
 hermes gateway status
 ```
+
+Distinguish upstream base, a fork's default branch, the chosen release source, the built image digest and the build actually observed running. A checked-out branch or a tag name is not proof of what is deployed; bind evidence to source SHA, image digest/provenance and exact-head CI where these exist, and do not invent receipts where they do not.
 
 Then exercise the real paths affected by the update: one authorized gateway interaction, one file mutation in a disposable workspace, one MCP read, one scheduled-job canary, and any critical custom plugin or integration.
 
@@ -587,6 +595,8 @@ Write-denial tests are write attempts: if enforcement fails they can mutate data
 - gateway restart recovery is observed;
 - scheduled-job failure reaches an owner;
 - critical state stores pass their supported integrity checks.
+
+Lifecycle tests (restart, import, update, supervisor behavior) belong on a disposable deployment or external CI that reproduces the real supervisor and container layout. A temporary profile or Git worktree on the live host shares its process supervisor, PID 1, host Docker and live state; it is not an isolated lifecycle canary. Never exercise those tests against the active supervised gateway. A restore path that has not been exercised remains unverified.
 
 ## 17. Recommended deployment profiles
 

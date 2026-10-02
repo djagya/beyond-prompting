@@ -36,6 +36,18 @@ Use the system's native job, service and recovery mechanisms before adding anoth
 
 Branch contents and upstream inclusion change over time. This guide does not claim that every fork change is absent upstream, required for these methods or suitable for another deployment. Before adopting a build, inspect the intended branch, compare it with current upstream, read its tests and release notes, and choose a known revision. Do not assume the fork's default branch is the build currently used by its owner.
 
+A read-only adoption request for your agent:
+
+```text
+Inventory my Hermes installation without changing it: install ownership
+(Git checkout, container image, other packaging), terminal and browser
+backends, running version and its source revision or image digest.
+Map capability -> authority -> tested access for each consequential tool.
+Compare the fork revision I name with my upstream base. Propose an
+incremental change set with acceptance checks and rollback (previous
+digest or revision). Do not install, update, restart or switch builds.
+```
+
 - [Official Hermes documentation](https://hermes-agent.nousresearch.com/docs/)
 - [Operational literacy](../readings/beyond-prompting.en.md)
 - [Capability and authority](../readings/principles-from-hermes-in-practice.en.md)

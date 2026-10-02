@@ -4,9 +4,9 @@
 
 These contracts complement [setup patterns](setup-patterns.en.md) and [weekly learning extraction](weekly-learning-extraction.en.md). Adopt them in the current owner of the workflow rather than adding another controller or a permanent instruction layer.
 
-## 1. Give one worker a coherent result
+## 1. Give one owner a coherent result
 
-Default implementation work to one capable worker that owns development and self-verification. Keep architecture, shared state, live external authority and final integration acceptance with the controller. A second reviewer must test a distinct material failure mode, provide specialist competence or justified independence; do not insert a generic reviewer after every task.
+By default the controller executes the work directly. Delegate only when a bounded, independent, verifiable branch earns its coordination cost (see [Single Agent by Default](../readings/single-agent-by-default.en.md)); then give one capable worker the whole coherent result, including development and self-verification. Keep architecture, shared state, live external authority and final integration acceptance with the controller. A second reviewer must test a distinct material failure mode, provide specialist competence or justified independence; do not insert a generic reviewer after every task.
 
 A useful task contract:
 
@@ -38,7 +38,7 @@ A process owner continues ready in-scope transitions rather than stopping after 
 - commissioned external work is pending;
 - the bounded runtime budget is exhausted with a durable checkpoint.
 
-Checkpoints name current state, exact candidate, next owner/action and authority boundary. Notifications are wake signals, not current truth: inspect the authoritative target once, discard superseded events and do not replay completed mutations. Do not busy-poll CI or child workers.
+Checkpoints name current state, exact candidate, next owner/action and authority boundary. Write a checkpoint only to a destination the mandate authorizes; for read-only work, return findings and source locators in the reply instead of writing into the target. Never place private evidence in a public checkout. For partial or truncated evidence, record the denominator, what was covered and how to recover the remainder. Notifications are wake signals, not current truth: inspect the authoritative target once, discard superseded events and do not replay completed mutations. Do not busy-poll CI or child workers.
 
 Implementation-phase completion is not release acceptance. When CI belongs to the controller, hand off the durable candidate and self-verification; when the worker's own completion contract requires CI, preserve that gate until exact-candidate evidence arrives. A test receipt for another revision does not clear the release barrier.
 
@@ -57,6 +57,8 @@ Define acceptance across three independent questions: are the facts correct, can
 ## 6. Keep evidence and delivery connected
 
 A handoff names source/version or retrieval date, tested scope, artifact location, uncertainty and remaining owner. The controller verifies consequential claims and returns the useful synthesis to the originating request. A task-status notification is not the promised result.
+
+An ambiguous result is unknown, not failed. If a non-idempotent action (send, payment, publication, import, resource creation) timed out or lost its response, first inspect the exact target, provider receipt or log. Repeat only after proven non-application or under a documented idempotency key; otherwise report a blocker with the evidence collected.
 
 Avoid unsafe repetition to obtain fresher evidence. Reuse valid evidence for an unchanged exact candidate; refresh mutable facts when the next decision depends on them. No deployment, purchase, send or negative write-test is implied by a request to prove a patch.
 

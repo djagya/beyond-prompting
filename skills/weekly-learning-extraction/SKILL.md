@@ -16,7 +16,7 @@ Default to REVIEW: read-only analysis. AUDIT inspects relevant procedures and su
 
 ## Procedure
 
-1. Fix the seven-day activity window, timezone and corpus. Apply the bounds to each message timestamp, not the session creation date; include old sessions with in-window activity. Check actual history/provenance capabilities before choosing tools. With only selected exports review that bounded corpus; without history report readiness, not invented lessons. Unknown timestamps or authorship are coverage uncertainty. Do not invent universal Hermes export commands.
+1. Fix the seven-day activity window, timezone and corpus. Apply the bounds to each message timestamp, not the session creation date; include old sessions with in-window activity. Check actual history/provenance capabilities before choosing tools. With only selected exports review that bounded corpus; without history report readiness, not invented lessons. Unknown timestamps or authorship are coverage uncertainty. Count coverage programmatically against a stated denominator; a top-k search result is not a census. Do not invent universal Hermes export commands.
 2. A `user` role does not prove human authorship: exclude generated jobs, task notices, quoted material and compaction summaries as consent evidence. Collapse only copies with demonstrated transport identity/lineage; matching text or timestamps alone do not prove replay. Preserve independently sent identical corrections. Mark unresolved provenance instead of silently removing it. Bookends and search hits locate evidence; inspect primary authored messages and adjacent responses.
 3. Select recurring corrections, major failures, successful reusable methods and avoidable user intervention. Keep observation, inference and proposal separate. Do not convert every incident into a rule or obligation.
 4. For each significant lesson, identify the existing semantic owner. Distinguish missing rule, adequate-but-unapplied rule, conflicting contract, routing/capability/code/config defect, and already repaired history. Inspect current primary surfaces before claiming a live defect.
@@ -24,7 +24,7 @@ Default to REVIEW: read-only analysis. AUDIT inspects relevant procedures and su
 6. Propose exact targets, minimal changes, ordering, dependencies, acceptance checks, gates and recovery. Prefer replacing superseded current requirements to duplicating prose. Preserve historical evidence and paused state.
 7. If implementation is subsequently authorized, preview the envelope, apply on supported surfaces and read back exact targets. Preserve action-specific external gates and security controls. Never publish private incident evidence.
 8. Test actual outcomes at the appropriate boundary. Distinguish static assertions, fixtures, fresh-context behavioral canaries, live access probes and production evidence. Prepared/unexecuted tests are not PASS.
-9. Report applied changes separately from proposals and open acceptance. Persist lessons only in their proper owner within the authorized envelope; do not silently rewrite identity.
+9. Report applied changes separately from proposals and open acceptance. Persist lessons only in their proper owner within the authorized envelope: a repeatable procedure in the owning skill, a project decision in project state, a bounded cross-session personal fact in memory; do not silently rewrite identity.
 
 ## Output
 

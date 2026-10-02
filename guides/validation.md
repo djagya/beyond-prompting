@@ -23,11 +23,13 @@ Use the synthetic cases in the [English](agent-start.en.md) or [Russian](agent-s
 - `hermes backup --quick` is critical-state only; full backup may have automatic retention deletion. Project and external state require their own protection.
 - Supported unattended API/webhook sessions have a separate `approvals.unattended_mode`; unsupported versions need an explicitly verified alternative boundary.
 - Skill installation is optional. Read procedures directly when the host lacks a compatible installer. Inspect the exact source and installer behavior before admitting executable extensions.
+- Dangerous-command checks are documented as skipped on container/sandbox terminal backends; `approvals.*` settings are evidence of enforcement only for the effective backend actually in use.
+- `hermes update` is the Git/source route; image-owned installs are updated by replacing a pinned image (current Docker documentation).
 - The linked fork evolves independently; no claim that its default branch matches a deployed build or that all changes remain absent upstream is made.
 - The hardening guide is English; the readings, onboarding, setup, operating loops and weekly guide have paired EN/RU versions. Procedural skills are English.
 
 ## Current evidence limits
 
-The maintenance pass read all originally tracked files. Main research theses were retained; the Gao token-cost statement was made qualitative because its prose ranges do not describe every row of its own Table 3. Selected authoritative documentation and native CLI help were checked. Local fork help is not upstream installation proof.
+The maintenance pass read all originally tracked files. Main research theses were retained; the Gao token-cost statement was made qualitative because its prose ranges do not describe every row of its own Table 3. Selected authoritative documentation and native CLI help were checked. Local fork help is not upstream installation proof. A second review pass (2026-10) re-checked backend approval scope, image-owned updates, `browser.restrict_evaluate`/`browser_exec` and lifecycle-canary isolation against cached official Security, Docker and Browser pages and local CLI help; no live retrieval or runtime test was performed.
 
 No foreign agent deployment, skill installation, backup restore, credential rotation, provider write-denial test or production hardening was executed. A link may be structurally valid while retrieval is blocked or its future content changes. Record unresolved checks; never replace them with fabricated PASS.
