@@ -102,7 +102,7 @@ A portable map of the controls behind this practice: capability-aware delegation
 - [Danil's Hermes fork](https://github.com/djagya/hermes-agent)
 - [Upstream Hermes](https://github.com/NousResearch/hermes-agent)
 
-The fork is a customization and integration surface, not official upstream. Its branches evolve; inspect the intended revision and current upstream diff rather than assuming every fork change remains unmerged or that its default branch matches the deployed build.
+The fork is upstream Hermes plus operational fixes for one long-running Docker deployment, not official upstream. The guide's fork section lists what the fork changes by area (with upstream status for each), the trade-offs of running it, and when stock upstream is enough. Its branches evolve; inspect the intended revision and current upstream diff rather than assuming every fork change remains unmerged or that its default branch matches the deployed build.
 
 ## Conventions for agents
 
