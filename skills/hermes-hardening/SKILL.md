@@ -357,7 +357,7 @@ The second block is not a blind baseline. Its controls can remove required conte
 
 Also check, per profile:
 
-- list-valued keys read back as lists, not strings (stock `config set` has stored a JSON list as a YAML string, turning a deny list into deny-all); set them with `hermes config edit`;
+- list-valued keys read back as lists, not strings (older `config set` builds stored a JSON list as a YAML string, turning a deny list into deny-all; a value written then stays wrong until rewritten); set them with `hermes config edit`;
 - `command_allowlist` entries are approval classes: the class `script execution via -e/-c flag` pre-approves every interpreter one-liner in every session. The reference accepts only that class (or an empty list) as an owner decision;
 - `approvals.deny` covers backup destruction and hook bypass where they apply; it is fnmatch over normalized command text and runs even in YOLO/off modes;
 - effective policy matches intent after every deploy: mirrored config and agent self-edits can flip approval leaves, and on the fork build used here the image's managed config seed is a default, not a lock. Assert the trio `skills.write_approval=true`, `memory.write_approval=false` and `approvals.cron_mode=deny` through `hermes config get` and fail the deploy on a mismatch.
