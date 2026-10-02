@@ -87,6 +87,9 @@ The pattern used here is a **guarded transaction** run by a plugin, not free-for
 - **Commit** once with the complete plan for both stores. The runtime checks exact claim coverage, destination receipts and the retention test, applies both stores under locks, and on a late failure compensates back to the pre-images without overwriting foreign bytes. Incomplete compensation is reported as `PARTIAL_MUTATION`, never as success.
 - Per-run caps (for example one new note, three updated notes, two staged skill proposals). No active-skill edits, no identity edits, no web, MCP or task tools.
 - Terminal status is always visible: `MUTATED`, `BOUND_HIT`, `STAGED`, `ABORTED_DRIFT` (live state changed after the snapshot), `FAILED_VERIFY`, `PARTIAL_MUTATION`. Only a warning-free `NOOP` may be silent.
+- Size the per-operation receipt cap to the largest number of claims one entry can hold; a smaller cap makes those entries unmovable and pins the stores at their limits.
+- One open transaction at a time. Never commit a stale transaction after a newer run changed the stores; its pre-images are outdated.
+- A transaction that planned no change to a store never wrote it, so newer bytes there are not its to compensate: it ends `ABORTED_DRIFT`, never `PARTIAL_MUTATION` (which blocks every later run). Keep a narrow operator reconcile command for legacy no-op partials that refuses anything that planned or attempted a real change.
 - Pre-images and receipts stay private (owner-only modes, bounded retention); reports never expose them.
 - Watch the approval trap: with `memory.write_approval: true`, unattended writes are staged for review that never comes. Keep that gate off and restrict who can write by omitting the `memory` toolset from jobs that must not write.
 

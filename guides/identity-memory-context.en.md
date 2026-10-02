@@ -71,6 +71,8 @@ Hygiene is something the **agent runs**, not something you do behind its back:
 
 If you automate hygiene as a scheduled job, make it a guarded transaction, not a prompt: snapshot the exact preimages first; require a verified destination for every claim it removes; compensate back to the preimages if any step fails; cap the writes per run (for example one new note, three updated notes, two staged skill proposals); and end in an explicit status (no-op, mutated, bound hit, staged, aborted on drift, failed verification, partial mutation). An unattended run cannot edit active skills or SOUL: a procedure that needs a new skill becomes a staged proposal, and the memory entry stays until that proposal is approved. Such a job can stay off; a manual pass under the same contract is enough.
 
+Three traps from running that transaction: size the per-operation receipt cap to the largest number of claims one entry can hold (a cap of six left every larger entry unmovable, so the stores sat at their limits); keep one open transaction at a time and never commit a stale one after a newer run has changed the stores; and make a transaction that planned no change end as *aborted on drift*, not *partial mutation*. A no-op owns no bytes, but a partial status blocks every later run until an operator reconciles it, so ship a narrow reconcile command that refuses anything that planned or attempted a real change.
+
 If you must edit memory files directly (rare), do it atomically (write a temp file, rename it over the original, keep it owner-only `chmod 600`) and only between sessions.
 
 ## 4. Size guards on deploy
@@ -125,6 +127,7 @@ Checklist:
 - A skill is a **procedure**: `skills/<category>/<name>/SKILL.md` with frontmatter `name:` equal to the directory name and a `description:` that says *when* to load it.
 - Progressive disclosure: the prompt carries only the index; `skill_view(name)` loads the body; `skill_view(name, path)` loads a reference file.
 - **Write approval.** `skills.write_approval: true` stages every agent skill write for review (`/skills pending`, `/skills diff`, `/skills approve|reject`). Keep it on for skills and **off** for memory (`memory.write_approval: false`): scheduled jobs have no operator to approve, so a staged memory write never completes. Forbid memory writes per job by omitting the `memory` toolset instead.
+- **The approver must not be the author.** If the owner delegates queue review to the agent (a standing phrase such as "review pending skills"), freeze the tranche at inventory. Proposals staged after the freeze, including the reviewer's own same-run proposals or corrected composites of reviewed ones, are later arrivals: leave them pending and report them. Otherwise one run can stage and approve its own edits, and the gate reviews nothing.
 - These settings live in a config the agent can edit. Treat them as **asserted, not locked**: read the effective values back on every deploy (`hermes config get skills.write_approval`) and fail on a mismatch. The fork build used here also bakes a managed seed for these leaves; it fills only missing leaves, and `hermes config set` still overrides it, so it is not a lock either.
 
 Keep each surface separate:
@@ -160,6 +163,7 @@ Three file classes: **mirrored files** (`SOUL.md`, `ARCHITECTURE.md`, `config.ya
 | **No conflict markers.** Publish refuses to commit `<<<<<<<` in identity files. | Markers landing in the live config. |
 | **Config schema gate.** The apply refuses a git `config.yaml` whose schema version is newer than the release expects, and defers one newer than the live runtime until the image upgrade. | A new-schema config landing on a still-running older image. |
 | **Seeds are runtime-owned.** Files git seeds once (e.g. a cron jobs list) belong to the runtime after first apply. | Git overwriting live schedules. |
+| **Adopt local skills by origin, not author.** The export skips third-party skills (bundled, hub-installed). Decide that by origin, or stamp an internal author when the agent creates a skill; the platform's default author name is also used by upstream skills, so an author-only rule never adopts the agent's own older skills. | Agent-created skills that exist only on the host, with no git copy. |
 
 What does **not** deploy via git: cron jobs (change them with the CLI on the host; the publish job copies them back to the seed; a field the CLI cannot set, such as a job's toolsets, is edited in the jobs file atomically), memory (agent tool or careful host edit), secrets (host `.env` only). And because the config is mirrored, a runtime `config set` can flip a policy leaf that the publish then commits — hence the deploy-time assertion in §6.
 
@@ -171,6 +175,7 @@ Failure → symptom → fix:
 | Apply ran without the both-sides check | Agent's recent skill edits vanished | Put the check inside the apply script itself, so every path is covered |
 | Deletion done only in git | Deleted skill reappears next publish | Use the retire command |
 | Same key edited on both sides | Publish rebase conflict, repeats | Merge by hand on the host; the job restores and reports |
+| Agent-created skill never shows up in git | It carries the platform's default author, which the export treats as third-party | List runtime skills that are neither tracked, bundled, hub-installed nor in the upstream tree; adopt them into git once, then stamp an internal author on creation |
 | Export log says git is ahead of the runtime | Publish keeps refusing | The apply did not land: either a both-sides refusal (merge that file) or a deferred config schema (wait for the upgrade) |
 
 ## 8. Propagating a correction to every owner

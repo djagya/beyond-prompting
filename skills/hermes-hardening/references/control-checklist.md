@@ -87,7 +87,7 @@ Never record secret values. Evidence should identify the command, source, timest
 | HRD-055 | Supply-chain audit runs after install/update/extension changes. | `hermes security audit` result and disposition. |
 | HRD-056 | Runtime dependency installation policy is explicit. | `security.allow_lazy_installs` plus provisioned dependency test. |
 | HRD-057 | Connected-browser authority is separated from hostile ingestion; arbitrary evaluation and website policy are decided. | Effective browser driver/backend (including `browser_exec`, which runs model-written Python and requires terminal access), no browser process or loopback CDP inside the gateway container, browser containers without a route to the gateway API and with policed egress, Chrome sandbox kept on, browser-profile inventory, `browser.restrict_evaluate` (a primitive-name denylist, not a sandbox), website policy, authenticated-session test. |
-| HRD-058 | Agent-created persistent skill writes require an explicit owner policy/gate. | `skills.write_approval` decision and denied-write canary. |
+| HRD-058 | Agent-created persistent skill writes require an explicit owner policy/gate. | `skills.write_approval` decision and denied-write canary; a delegated queue review never approves proposals staged during that same review (the author is not the approver). |
 | HRD-059 | Command-based MCP servers resolve after every update; image pins carry an SBOM, scheduled rescans and expiring ignores. | Command resolution with the gateway's own PATH; SBOM per pin; rescan and alert evidence. |
 
 ## G. Automation and state
