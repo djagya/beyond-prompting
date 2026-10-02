@@ -2,7 +2,7 @@
 
 > **Template notes — delete this block before installing.**
 > SOUL.md is the agent's identity, loaded first in every prompt from `$HERMES_HOME/SOUL.md` (never from the working directory) and injected verbatim.
-> Keep it under ~18,000 characters and never over 20,000: past the cap Hermes cuts the file without telling the agent. Add a size guard to your deploy ([identity guide §4](../guides/identity-memory-context.en.md#4-size-guards-on-deploy)).
+> Keep it under ~18,000 characters (a prompt budget: it rides every request) and never over the context-file cap (`context_file_max_chars`, else a 20,000-character floor): past the cap Hermes drops the middle of the file around a marker. Add a size guard to your deploy ([identity guide §4](../guides/identity-memory-context.en.md#4-size-guards-on-deploy)).
 > Put here only what should apply in every conversation. No paths, tools, commands, ports, project rules, channel lists or task state — those go in ARCHITECTURE.md, skills, the project's `.hermes.md`/`AGENTS.md`, or notes.
 > The person this agent serves should write (or approve) this file in their own words. Do not copy another agent's SOUL.
 > Remove guidance in brackets and any section this person does not need. Avoid hidden HTML comments in context files.

@@ -349,7 +349,7 @@ hermes config set security.tirith_fail_open false
 
 Tirith is not available as a prebuilt native Windows binary; use WSL if this layer is required.
 
-For controlled environments, disable runtime dependency installation after required features have been provisioned and tested:
+Runtime dependency installation (`security.allow_lazy_installs`) lets opt-in backends (memory providers, telemetry exporters, plugin dependencies) install their packages on first use. On image installs those land in a dependency area under the data directory, never in the sealed application environment, and are re-resolved against each new image. The reference keeps it on, because turning it off freezes the feature set to what the image shipped and breaks any backend enabled later. The cost is a supply-chain gap: those packages come from the package index at runtime, outside the image SBOM and its rescans, so review a newly enabled backend like an image pin and read what is installed from the package manager's sync receipt. For controlled environments where the feature set is fixed, disable it after provisioning and testing:
 
 ```bash
 hermes config set security.allow_lazy_installs false
@@ -709,7 +709,7 @@ Write-denial tests are write attempts: if enforcement fails they can mutate data
 - a rollback has a restorable pre-upgrade data snapshot and a locally retained previous image;
 - the gateway booted from the parsed config, not from fallback defaults, and this boot loaded every messaging token;
 - the latest backup is recent and its staged state database passed its integrity check;
-- identity prompt files and memory stores are under their character caps (overflow is truncated silently);
+- identity prompt files are under the context-file cap (past it the middle is dropped) and memory stores under their limits (over it, new adds are refused);
 - runtime files are owned by the runtime user, and jobs paused on purpose are still paused.
 
 The reference deployment runs the machine-checkable state items (policy per home, bound ports, MCP commands, config load, messaging tokens, backup freshness, caps, ownership, paused jobs) as one monthly health-sweep script that prints `PASS`, `WARN` or `FAIL` per check and exits non-zero on any `FAIL`. An expected, allowlisted failure prints `WARN` and does not change the exit code, so a red exit always means something real. Pasted snippets rot; a script is diffable and testable.

@@ -12,10 +12,10 @@ What the model sees at session start, top to bottom:
 
 | # | Slot | Source | Cap | Notes |
 | --- | --- | --- | --- | --- |
-| 1 | Identity | `$HERMES_HOME/SOUL.md` only, never the working dir | 20,000 characters (see §4) | Injected verbatim. |
-| 2 | Topology | `$HERMES_HOME/ARCHITECTURE.md` | 20,000 characters | On the fork build used here. Profile-scoped and independent of the working directory; also loaded in identity-bearing cron runs that have no project context. |
+| 1 | Identity | `$HERMES_HOME/SOUL.md` only, never the working dir | `context_file_max_chars` when set, else a model-scaled cap with a 20,000-character floor (see §4) | Injected verbatim up to the cap. |
+| 2 | Topology | `$HERMES_HOME/ARCHITECTURE.md` | same cap as SOUL | On the fork build used here. Profile-scoped and independent of the working directory; also loaded in identity-bearing cron runs that have no project context. |
 | 3 | Tool guidance | built in | — | — |
-| 4 | Memory | `$HERMES_HOME/memories/MEMORY.md`, `USER.md` | `memory.memory_char_limit`, `memory.user_char_limit` | **Frozen at session start**; silently truncated over the cap. This install sets both limits above the upstream defaults; read the effective values with `hermes config get`. |
+| 4 | Memory | `$HERMES_HOME/memories/MEMORY.md`, `USER.md` | `memory.memory_char_limit`, `memory.user_char_limit` | **Frozen at session start**; over the cap every entry still loads, but each new add is refused. This install sets both limits above the upstream defaults; read the effective values with `hermes config get`. |
 | 5 | Skills index | names + descriptions only | — | Full skill loaded on demand (`skills_list()` → `skill_view(name)`). |
 | 6 | Project context | first match from the working dir: `.hermes.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules` / `.cursor/rules/*.mdc` | `context_file_max_chars` when set, otherwise a model-scaled cap | Only **one** type loads (§5). |
 | 7 | Timestamp, platform hints | built in | — | — |
@@ -25,8 +25,8 @@ The order has moved between releases; do not build anything that depends on it.
 
 What bites in practice:
 
-- **Silent truncation.** A file over its cap is cut and the cut part never reaches the model. Treat truncation as silent: guard the sizes in a script (§4) rather than relying on a log line.
-- **Memory over its limit.** A store pushed over its limit (a hand edit, a lowered limit) is truncated when it is injected, without warning.
+- **The middle of an over-cap file is lost.** Past the cap, SOUL, ARCHITECTURE and project files keep their first 70% and last 20% around a marker that tells the agent to `read_file` the rest; Hermes logs a warning and shows a status line in chat. Whatever sat in the middle no longer shapes behaviour. Guard sizes in a script (§4) instead of waiting for that warning.
+- **Memory over its limit stops learning.** A store pushed over its limit (a hand edit, a lowered limit, an external writer) is not truncated: every entry still loads, so the prompt carries the whole oversized block, and every later add is refused until the store is back under. Only a log line says so; the agent simply stops saving new facts.
 - **Frozen snapshot.** A memory change made during a session takes effect next session. "I told you yesterday" with a still-open session is a frozen-snapshot problem, not a forgetting problem.
 - **Cron is different.** A cron job without a `workdir` loads no project context. An invariant that lives only in project context is invisible to scheduled runs; on the fork build used here, `ARCHITECTURE.md` still loads there, so scheduled-run invariants go in it.
 
@@ -75,10 +75,10 @@ If you must edit memory files directly (rare), do it atomically (write a temp fi
 
 ## 4. Size guards on deploy
 
-Silent truncation is a script problem, not a discipline problem. Add a check to every deploy and to your periodic health check:
+Lost content is a script problem, not a discipline problem. Add a check to every deploy and to your periodic health check:
 
 ```bash
-# WARN near the cap, FAIL (refuse the deploy) over it
+# WARN over a prompt budget, FAIL (refuse the deploy) over the real cap
 rc=0
 check() { # file warn_at cap
   [ -f "$1" ] || return 0
@@ -87,9 +87,11 @@ check() { # file warn_at cap
   [ "$n" -gt "$3" ] && { s=FAIL; rc=1; }
   echo "$s $(basename "$1"): $n/$3 chars"
 }
-check "$HERMES_HOME/SOUL.md"         18000 20000
-check "$HERMES_HOME/ARCHITECTURE.md" 10000 20000
 # hermes = your CLI wrapper, run as the runtime user (never root)
+cap=$(hermes config get context_file_max_chars | awk '{print $NF}')
+case "$cap" in ''|*[!0-9]*|0) cap=20000 ;; esac   # unset: the 20k floor is the safe cap
+check "$HERMES_HOME/SOUL.md"         18000 "$cap"
+check "$HERMES_HOME/ARCHITECTURE.md" 10000 "$cap"
 mem=$(hermes config get memory.memory_char_limit | awk '{print $NF}')
 usr=$(hermes config get memory.user_char_limit | awk '{print $NF}')
 check "$HERMES_HOME/memories/MEMORY.md" $((mem * 90 / 100)) "$mem"
@@ -101,8 +103,8 @@ Adapt the `awk` to your `config get` output.
 
 - Run it on the **git copy** before applying (refuse the deploy on FAIL) and on the **live copy** in the health check (the agent may have grown it).
 - Hermes strips surrounding whitespace before it counts; `wc -m` counts it, so it slightly over-counts. That errs safe.
-- 20,000 is the floor of the context-file cap. A build can raise the cap with `context_file_max_chars` or scale it with the model's window, but the guard keeps 20k as the hard limit so SOUL and ARCHITECTURE fit whatever model or config is live.
-- Memory WARNs within 10% of its limit (the hygiene watermarks in §3 act earlier). A WARN never exits non-zero; only a FAIL blocks.
+- The FAIL line is the real cap: `context_file_max_chars` when set (the reference pins it well above 20k), otherwise the model-scaled cap, whose floor of 20,000 is the safe assumption for a guard that cannot know the live model. The 18k / 10k WARN lines are a prompt budget, not a limit: both files ride every request, so size costs tokens long before it costs content.
+- For memory, FAIL means adds are already being refused. It WARNs within 10% of its limit (the hygiene watermarks in §3 act earlier). A WARN never exits non-zero; only a FAIL blocks.
 - Fix an over-cap SOUL by moving detail to skills or notes, not by raising the cap.
 
 ## 5. Project context: precedence and the hijack shield

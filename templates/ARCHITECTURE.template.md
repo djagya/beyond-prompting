@@ -4,7 +4,7 @@
 > A compact, always-loaded runtime contract: topology, who may receive what, routing, and which store owns which state.
 > It holds invariants that must survive even if memory is reconciled away. It is not persona (SOUL.md), not a runbook (skills), not a task log.
 > On the fork build this collection comes from, Hermes loads `$HERMES_HOME/ARCHITECTURE.md` right after SOUL, scoped to the profile and independent of the working directory, including identity-bearing cron runs without project context. Stock upstream may not load it: check yours. If it doesn't, put these invariants in the agent's fixed-workdir `.hermes.md` and a short SOUL section, and remember that cron jobs without a `workdir` load no project context.
-> Keep it under ~10,000 characters (WARN) and never over the 20,000-character cap. No secrets, tokens or hostnames; give channels descriptive names (a numeric chat ID is fine only in a private repo).
+> Keep it under ~10,000 characters (prompt budget, WARN) and never over the context-file cap (`context_file_max_chars`, else a 20,000-character floor). No secrets, tokens or hostnames; give channels descriptive names (a numeric chat ID is fine only in a private repo).
 > Drop any section that does not apply. Guide: [Identity, Memory and Context](../guides/identity-memory-context.en.md).
 
 ---

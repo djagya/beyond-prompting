@@ -39,9 +39,9 @@ Changes to the identity/persona file (for Hermes, `SOUL.md`) need the owner's ex
 
 | Layer | Holds | Loaded |
 |---|---|---|
-| Identity file (`SOUL.md`) | persona, voice, durable stance; no paths or tooling | every turn, from `HERMES_HOME` only; tail silently truncated past 20k characters |
-| Topology file (`ARCHITECTURE.md`, fork build used here) | runtime topology, channel/privacy invariants, ownership that must not depend on memory | every turn right after SOUL, per profile, cwd-independent, including identity-bearing cron runs; same 20k cap |
-| Memory (`MEMORY.md`, `USER.md`) | compact facts needed **before any lookup** | frozen at session start; capped by `memory.*_char_limit`; content over the cap is silently truncated |
+| Identity file (`SOUL.md`) | persona, voice, durable stance; no paths or tooling | every turn, from `HERMES_HOME` only; capped by `context_file_max_chars` (else a model-scaled cap, 20k floor); past it the middle is dropped around a marker and a warning |
+| Topology file (`ARCHITECTURE.md`, fork build used here) | runtime topology, channel/privacy invariants, ownership that must not depend on memory | every turn right after SOUL, per profile, cwd-independent, including identity-bearing cron runs; same cap |
+| Memory (`MEMORY.md`, `USER.md`) | compact facts needed **before any lookup** | frozen at session start; capped by `memory.*_char_limit`; over the cap every entry still loads but each new add is refused |
 | Skills | procedures, routing, decision trees, tool conventions | on trigger |
 | Notes / vault | rich context, profiles, project state, reflections | on lookup |
 | Optional retrieval memory system | searchable history and past decisions | on query; evidence, not instructions |
@@ -92,10 +92,10 @@ The pattern used here is a **guarded transaction** run by a plugin, not free-for
 
 ## Size guard (operators)
 
-Over-cap content is truncated silently at load, so measure instead of trusting writes:
+Over-cap state fails quietly (identity files lose their middle; memory refuses new adds with only a log line), so measure instead of trusting writes:
 
-- Memory stores: in a regular health sweep, `FAIL` when a store is over its `memory.*_char_limit`, `WARN` within 10% of it.
-- Identity and topology files: check the git copies before every deploy against the 20k-character prompt cap (warn with headroom, refuse the deploy over the cap) and the live copies in the sweep.
+- Memory stores: in a regular health sweep, `FAIL` when a store is over its `memory.*_char_limit` (adds are being refused), `WARN` within 10% of it.
+- Identity and topology files: check the git copies before every deploy against the real cap (`context_file_max_chars`, else the 20k floor) and refuse the deploy over it; warn earlier at a prompt budget (about 18k for SOUL, 10k for ARCHITECTURE); check the live copies in the sweep.
 
 ## Output
 

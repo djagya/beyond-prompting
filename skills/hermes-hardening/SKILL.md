@@ -348,7 +348,7 @@ hermes config set privacy.redact_pii true            # [on]
 hermes config set security.tirith_fail_open false    # [fail-closed]
 hermes config set checkpoints.enabled true           # [on]
 hermes config set terminal.home_mode profile         # [auto, with a separate child-process HOME at container level]
-hermes config set security.allow_lazy_installs false # [left on]
+hermes config set security.allow_lazy_installs false # [left on: opt-in backends install on demand; review each like an image pin]
 ```
 
 The second block is not a blind baseline. Its controls can remove required context, shared CLI auth, runtime dependency installation, command availability or storage capacity. Test before adopting.
