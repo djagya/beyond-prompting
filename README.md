@@ -12,6 +12,8 @@ Beyond Prompting is about turning intentions into bounded, verifiable outcomes w
 
 Give your agent the [English entry guide](guides/agent-start.en.md) or [русский агентский вход](guides/agent-start.ru.md). Each contains a ready-to-use read-only adoption prompt, route selection, capability fallbacks and synthetic acceptance scenarios. No private setup or fork installation is required.
 
+**Setting up Hermes for yourself or someone else?** Follow [Reference Setup — EN](guides/setup-reference.en.md) / [эталонный сетап — RU](guides/setup-reference.ru.md), then keep it healthy with [Operations — EN](guides/operations.en.md) / [эксплуатация — RU](guides/operations.ru.md). Starter files live in [`templates/`](templates/).
+
 Use [Operating Loops — EN](guides/operating-loops.en.md) / [рабочие циклы — RU](guides/operating-loops.ru.md) for concrete task, handoff, continuation and correction contracts. Read only the route relevant to the task; do not import this collection as a replacement system prompt. See [validation and compatibility](guides/validation.md) for what has and has not been checked.
 
 ## Readings
@@ -64,6 +66,24 @@ Then start with a read-only assessment:
 ```
 
 Installing or reading the repository makes the procedure available; it does **not** authorize deployment changes. To use the repository as project context, clone it and work inside the checkout so a compatible agent can discover the root [`AGENTS.md`](AGENTS.md).
+
+### Reference setup and operations
+
+A concrete path from an empty host to a maintained, self-hosted Hermes, distilled from a long-running Docker deployment:
+
+- [Reference Setup — EN](guides/setup-reference.en.md) / [RU](guides/setup-reference.ru.md) — compose shape, exposure, secrets layout, config baseline, backups, first-week acceptance, and handing a setup to someone else.
+- [Operations — EN](guides/operations.en.md) / [RU](guides/operations.ru.md) — silent-green failures, check cadence, red flags, upgrade and rollback runbook, state store, supply chain, alerts.
+- [Identity, Memory and Context — EN](guides/identity-memory-context.en.md) / [RU](guides/identity-memory-context.ru.md) — what goes in SOUL, architecture notes, memory, skills and notes; size caps; context-file precedence; versioning a self-editing identity in Git.
+- [Operating Hermes with a Coding Agent — EN](guides/coding-agent-operator.en.md) / [RU](guides/coding-agent-operator.ru.md) — dev clone vs runtime, mandate, CI discipline, worktrees, secrets, status, closing a window with learnings.
+- Templates: [`SOUL.template.md`](templates/SOUL.template.md), [`ARCHITECTURE.template.md`](templates/ARCHITECTURE.template.md), [`compose.example.yaml`](templates/compose.example.yaml).
+
+Reusable agent procedures for running it:
+
+- [Runtime automation governance](skills/runtime-automation-governance/SKILL.md) — cron, hooks, plugins and services: effective capabilities, scheduling pitfalls, alert paths.
+- [Memory and skill boundary hygiene](skills/memory-skill-boundary-hygiene/SKILL.md) — keep bounded memory small and move facts to their owners.
+- [Live state store maintenance](skills/live-state-store-maintenance/SKILL.md) — diagnose and repair the SQLite session/state store without making it worse.
+- [Archive-gated destructive cleanup](skills/archive-gated-destructive-cleanup/SKILL.md) — classify, archive and verify before deleting.
+- [Public contribution integrity](skills/public-contribution-integrity/SKILL.md) — publish to a public repository without leaking private history.
 
 ### Weekly Learning Extraction
 

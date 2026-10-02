@@ -13,7 +13,7 @@
 - **Allowed persistence / evidence writes:**
 - **Explicit exclusions:**
 - **Assessment timestamp:**
-- **Hermes version / install method:**
+- **Hermes version / install method / running image digest:**
 
 ## 2. Deployment statement
 
@@ -93,9 +93,12 @@ Complete only in APPLY mode.
 - tool/MCP allowlist:
 - provider-side read-only denial:
 - cron/one-shot dangerous-command denial:
+- effective install policy per home (`skills.write_approval`, `memory.write_approval`, `approvals.cron_mode`, private-URL leaves):
+- gateway topology (multiplexed / standalone profiles) and second-gateway check:
 - backup restore:
 - gateway restart/recovery:
 - critical integration canaries:
+- health-sweep result (`PASS`/`WARN`/`FAIL` counts and every `FAIL`):
 
 ## 10. Residual risk and next decision
 

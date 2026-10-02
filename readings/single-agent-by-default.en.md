@@ -180,6 +180,15 @@ A useful configuration posture is:
 
 The controller should still decide whether a child should exist at all.
 
+Work that must outlive one chat turn has a fourth surface: durable board (Kanban) cards that the gateway dispatches to named worker profiles. In the setup these notes come from, that surface follows the same gate:
+
+- the chat session creates or edits a card and returns; it does not run the board loop itself;
+- a builder profile owns implementation plus its own self-verification; the controller keeps planning, architecture, integration and acceptance, with no separate generic reviewer lane;
+- automatic decomposition stays off, so a card is never split and dispatched without the controller deciding the split;
+- dispatch is capped per board and per profile, and a card that fails twice stops instead of retrying;
+- when CI belongs to the controller, the worker hands off a committed candidate and its own evidence; neither side busy-polls CI;
+- each profile loads only its own identity, configuration and skills. All profiles share one gateway, so a gateway failure stops every worker at once.
+
 ## 9. Measure the architecture, not the spectacle
 
 After a delegated run, record:

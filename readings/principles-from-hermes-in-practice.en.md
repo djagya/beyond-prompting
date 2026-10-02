@@ -247,6 +247,8 @@ Use the appropriate store:
 - session history for chronology and raw evidence;
 - runtime state for locks, cursors, manifests, and receipts.
 
+The always-loaded stores are the scarcest and the least forgiving. Identity, topology, and memory files each have a character cap, and overflow fails quietly: an identity file past its cap loses its middle, and a memory store past its limit keeps loading but refuses every new fact, with nothing louder than a log line; memory is also frozen at session start. Layer accordingly: identity and voice in the persona file, channel and ownership invariants in a compact topology file, only pre-lookup facts in memory, procedures in skills, and rich material in notes. A fact promoted into an always-loaded store displaces another one, so promotion should pass an explicit retention test and every store should be measured against its cap mechanically: identity and topology files before each deploy, which refuses on overflow, and memory in a regular health sweep. The practical layering, size guards, and sync rules are in [Identity, Memory and Context](../guides/identity-memory-context.en.md).
+
 A strong skill-development loop is:
 
 ```text

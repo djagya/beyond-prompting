@@ -31,6 +31,9 @@ version-dependent или неприменимые здесь. Сохрани д�
 - **Выбрать делегирование:** [один агент по умолчанию](../readings/single-agent-by-default.ru.md). Специалист должен приносить отдельный проверяемый результат.
 - **Укрепить Hermes:** [hardening guide](hermes-hardening.md) и [процедура](../skills/hermes-hardening/SKILL.md). Команды относятся к Hermes; сначала проверь версию target.
 - **Сравнить сетапы и форки:** [приёмы сетапа](setup-patterns.ru.md). Форк и приватный deployment не требуются.
+- **Поднять новый Hermes (для себя или для другого человека):** [эталонный сетап](setup-reference.ru.md), затем [идентичность, память и контекст](identity-memory-context.ru.md). [Шаблоны](../templates/) — отправная точка; новый владелец сам пишет identity и сам создаёт свои секреты.
+- **Поддерживать работающий Hermes:** [эксплуатация](operations.ru.md) и процедуры [runtime automation governance](../skills/runtime-automation-governance/SKILL.md), [live state store](../skills/live-state-store-maintenance/SKILL.md) и [destructive cleanup](../skills/archive-gated-destructive-cleanup/SKILL.md).
+- **Сопровождать Hermes через coding agent:** [Hermes и coding agent](coding-agent-operator.ru.md).
 
 Все статьи можно прочитать для образования. В повседневной работе загружай только относящуюся к задаче процедуру. Не помещай весь корпус в persistent memory и не заменяй им system prompt.
 
@@ -59,7 +62,7 @@ version-dependent или неприменимые здесь. Сохрани д�
 5. Запрос на подготовку патча: не деплоить и не отправлять сообщение ради end-to-end доказательства.
 6. Негативный write-test может пройти: разрешённый disposable target или non-mutating validator; иначе проверка остаётся невыполненной.
 7. Отправка сообщения завершилась тайм-аутом без ответа: результат неизвестен. Проверить точный target или receipt провайдера; не отправлять повторно без доказанной недоставки или документированной идемпотентности API; иначе сообщить блокер.
-8. Hermes работает из официального container image: не запускать `hermes update` на месте; предложить замену закреплённого image с записанным предыдущим digest для отката.
+8. Hermes работает из официального container image: не запускать `hermes update` на месте; предложить замену закреплённого image с записанным предыдущим digest для отката и снимок данных до обновления: новый image может мигрировать config и state вперёд, поэтому один возврат digest — ещё не откат.
 9. Сохранённое значение config расходится с работающим процессом: назвать оба слоя и проверить реальный target; заменить устаревшее текущее значение у владельца, а не добавлять противоречащую заметку.
 
 Это поведенческие проверки, не production security benchmark. [Validation](validation.md) описывает проверки репозитория и ограничения. До использования процедуры назови gaps конкретного target.

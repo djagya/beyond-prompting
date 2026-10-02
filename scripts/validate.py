@@ -20,6 +20,17 @@ PATTERNS = (
 )
 
 
+def headings(path):
+    """Count Markdown headings outside fenced code blocks."""
+    count, fenced = 0, False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("```"):
+            fenced = not fenced
+        elif not fenced and re.match(r"#{1,6} ", line):
+            count += 1
+    return count
+
+
 def inspect(root):
     errors = []
     docs = sorted(p for p in root.rglob("*.md") if ".git" not in p.parts)
@@ -58,6 +69,15 @@ def inspect(root):
                     raise ValueError("Missing description")
             except (KeyError, ValueError, yaml.YAMLError):
                 errors.append({"file": rel, "kind": "skill_frontmatter"})
+    for en in sorted(root.glob("*/*.en.md")):
+        ru = en.with_name(en.name[: -len(".en.md")] + ".ru.md")
+        rel = str(en.relative_to(root))
+        if not ru.exists():
+            errors.append({"file": rel, "kind": "missing_translation", "target": ru.name})
+            continue
+        en_count, ru_count = headings(en), headings(ru)
+        if en_count != ru_count:
+            errors.append({"file": rel, "kind": "translation_heading_mismatch", "en": en_count, "ru": ru_count})
     return {"markdown_files": len(docs), "skill_count": sum(p.name == "SKILL.md" for p in docs),
             "errors": errors, "status": "PASS" if not errors else "FAIL",
             "scope": "structural_and_selected_text_patterns_only"}

@@ -1,0 +1,270 @@
+# Example docker compose file for a self-hosted Hermes Agent gateway.
+#
+# EXAMPLE ONLY — generalized from one long-running home deployment. Adapt it
+# and check every line against the Docker documentation for the image you
+# deploy:
+#   https://hermes-agent.nousresearch.com/docs/user-guide/docker
+#
+# Labels used below:
+#   [image]     behaviour of the Hermes Docker image (s6-overlay, uid remap)
+#   [practice]  a decision the deployment made, with its reason
+#   [fork]      only on the fork build that deployment runs; drop it on a
+#               stock upstream image unless your image documents the same
+#
+# Companion guide: guides/setup-reference.en.md (section 4 explains the why).
+#
+# Placeholders to replace:
+#   <registry>, <tag>, <digest>   image you reviewed (upstream or your fork)
+#   ./data/hermes                 host directory holding all runtime state
+#                                 (gitignored, backed up separately)
+#   1000:1000                     uid:gid of the host user that owns ./data/hermes
+#
+# Start and redeploy through your deploy script, not `docker compose up hermes`
+# by hand: the script applies identity, re-links supervised services and
+# asserts the config policy. A recreate empties /run/service.
+
+name: hermes-stack
+
+x-logging: &logging
+  # [practice] Docker's default json-file driver never rotates; bound it.
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  hermes:
+    # [practice] Pin tag AND digest. The tag is for humans; the digest is what
+    # runs. `docker compose pull` then cannot move you silently — a pin change
+    # becomes a reviewed commit, together with its SBOM. Get the digest with:
+    #   docker buildx imagetools inspect <registry>/hermes-agent:<tag>
+    # The image owns /opt/hermes: never mount a volume there and never copy
+    # fixes into it. A durable fix ships as a new digest.
+    image: "<registry>/hermes-agent:<tag>@sha256:<digest>"
+    container_name: hermes
+    restart: unless-stopped
+
+    # [image] Runs the supervised gateway (s6-overlay keeps it alive). Because
+    # of this, a one-off `docker compose run hermes` needs the explicit binary:
+    #   docker compose run --rm hermes /opt/hermes/.venv/bin/hermes <subcommand>
+    command: ["gateway", "run"]
+
+    # [image] The image's /init must start as root: it remaps the in-container
+    # `hermes` user to HERMES_UID/HERMES_GID and fixes volume ownership, then
+    # drops privileges for every service. Explicit here so nobody "hardens"
+    # it to a non-root user and breaks the remap. Recent images default to
+    # uid 10000 otherwise. Do NOT override `entrypoint`.
+    # Consequence: plain `docker exec hermes …` runs as root and leaves
+    # root-owned files in ./data/hermes. Exec as `-u hermes` via a wrapper.
+    user: "0:0"
+
+    # [practice] No `no-new-privileges` on this service: the uid remap and the
+    # privilege drop need setuid. Instead drop every capability and re-add
+    # only what remap + drop + service stop use. If the container fails to
+    # boot after an image bump, suspect this block first.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - FSETID
+      - SETUID
+      - SETGID
+      - KILL
+    # [practice] If you enable a sandbox that needs user namespaces (e.g.
+    # Bubblewrap), use Docker's default seccomp profile plus only the
+    # namespace/mount syscalls it needs. On Ubuntu 24.04 the host also
+    # restricts unprivileged user namespaces and docker-default AppArmor
+    # denies mount, so it additionally needs `apparmor:unconfined` and the
+    # host sysctl kernel.apparmor_restrict_unprivileged_userns=0.
+    # Never `seccomp=unconfined` or `privileged`.
+    # security_opt:
+    #   - seccomp:./hermes/seccomp-bwrap.json
+    #   - apparmor:unconfined
+
+    # [practice] The runtime cwd. Relative paths resolve here and Hermes
+    # loads this directory's AGENTS.md / CLAUDE.md / .cursor rules as project
+    # context — shield it with a NON-EMPTY .hermes.md (an empty one falls
+    # through to the next file). Uncomment with the workspace mount below.
+    # working_dir: /workspace
+
+    environment:
+      TZ: ${TZ:-UTC}
+      # [image] Remap to the host user that owns ./data/hermes so files the
+      # agent writes and files your host-side scripts (backup, git publish)
+      # write share ownership.
+      HERMES_UID: ${HERMES_UID:-1000}
+      HERMES_GID: ${HERMES_GID:-1000}
+      # [image] Container-side home of all state. Hermes reads its own
+      # ${HERMES_HOME}/.env for provider and platform keys.
+      HERMES_HOME: /opt/data
+
+      # [practice] Match the image's login-shell PATH (check
+      # /etc/profile.d in your image) so the gateway and terminal shells
+      # resolve the same binaries: image bins first, then an overlay bin dir
+      # in the data home for tools the image lacks, then system paths. An
+      # overlay copy of a system tool still shadows it — detect, don't reorder.
+      # PATH: /opt/hermes/bin:/opt/hermes/.venv/bin:/command:/opt/data/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+      # [practice] Shutdown budget. s6-overlay kills leftover processes 3 s
+      # after SIGTERM by default, and gateways run as dynamic s6 services
+      # outside the ordered shutdown; an in-band restart waits for in-flight
+      # turns to drain. A SIGKILL mid-write is how the SQLite session store
+      # gets corrupted. Keep both below stop_grace_period so s6, not dockerd,
+      # decides. Milliseconds; size them to your drain timeout.
+      S6_SERVICES_GRACETIME: "150000"
+      S6_KILL_GRACETIME: "150000"
+
+      # [practice] Keep disposable caches under the data home (mark them with
+      # CACHEDIR.TAG and back up with --exclude-caches) and model weights in a
+      # separate, non-cache directory.
+      # XDG_CONFIG_HOME: /opt/data/.config
+      # UV_CACHE_DIR: /opt/data/cache/uv
+      # NPM_CONFIG_CACHE: /opt/data/cache/npm
+      # HF_HOME: /opt/data/models/huggingface
+
+      # [practice] Subprocess secrets via passthrough: values live in the
+      # repo-root .env on the host (never in git, never in config.yaml —
+      # `config set` of a custom key writes it there in plaintext). Children
+      # spawned by the terminal tool inherit PID 1's environment unless the
+      # name is on Hermes' infrastructure blocklist.
+      # EXAMPLE_SERVICE_API_KEY: ${EXAMPLE_SERVICE_API_KEY:-}
+
+      # [image] The file-write tools are confined to ${HERMES_HOME} by
+      # default; list every root the agent may write. Set it here: the
+      # image's own ENV beats ${HERMES_HOME}/.env.
+      # HERMES_WRITE_SAFE_ROOT: /opt/data:/workspace:/tmp
+
+      # [fork] Child CLIs (git, gh, …) keep their dotfiles in a separate
+      # home under the data dir; the gateway's HOME stays HERMES_HOME.
+      # HERMES_CHILD_HOME: /opt/data/home
+      # [fork] Refuse to boot unless /opt/data is a real mount, so a
+      # mis-set volume never starts an empty agent.
+      # HERMES_REQUIRE_DATA_MOUNT: "1"
+
+      # The OpenAI-compatible API server is off unless enabled (here or in
+      # config.yaml). Enable it only for a client such as a web UI sidecar:
+      # it must then listen on 0.0.0.0 inside the container and carry a key
+      # (keep the key in ${HERMES_HOME}/.env, not here). Residual risk: any
+      # container on this compose network with the key can drive the agent.
+      # API_SERVER_ENABLED: "true"
+      # API_SERVER_HOST: "0.0.0.0"
+
+    volumes:
+      # [image] All mutable state: config, .env, sessions, memories,
+      # skills, cron, logs. Gitignored on the host; backed up separately.
+      - ${HERMES_DATA_DIR:-./data/hermes}:/opt/data
+      # Optional workspace (see working_dir above).
+      # - ${WORKSPACE_DIR:-./workspace}:/workspace
+
+    # [practice] Loopback only. Docker-published ports bypass host firewalls
+    # such as ufw (Docker's NAT rules run first), so "0.0.0.0" here means
+    # "reachable from every network the host is on". Expose through an
+    # authenticated private ingress (e.g. Tailscale Serve) instead.
+    ports:
+      - "127.0.0.1:${HERMES_GATEWAY_PORT:-8642}:8642"
+
+    # [practice] Chromium needs a large /dev/shm; the default 64 MB crashes tabs.
+    shm_size: "1g"
+
+    # [practice] Default soft nofile (1024) runs out once MCP servers,
+    # browsers, websockets and streaming responses stack up.
+    ulimits:
+      nofile:
+        soft: 8192
+        hard: 65535
+
+    # [practice] Caps RAM + swap combined. Size both to your host and leave
+    # room for the OS page cache. A running container keeps the limits it
+    # was created with until the next recreate.
+    memswap_limit: ${HERMES_MEMSWAP_LIMIT:-5G}
+    deploy:
+      resources:
+        limits:
+          memory: ${HERMES_MEM_LIMIT:-4G}
+          cpus: "${HERMES_CPU_LIMIT:-2.0}"
+          # [practice] Fork-storm brake. Leaked browser tabs plus MCP servers
+          # can exhaust a low cap ("can't start new thread"); raise it rather
+          # than removing it. Must be a literal integer, not ${VAR}. When it
+          # is hit, recreate the container: restarting the gateway service
+          # does not free the leftover processes.
+          pids: 4096
+
+    # [practice] Must exceed the s6 budgets above so the gateway and SQLite
+    # finish draining before dockerd sends SIGKILL. Docker's default is 10s.
+    stop_grace_period: 360s
+
+    # [practice] Observability only: Docker does not restart an unhealthy
+    # container. Green health is not "working" — also probe chat, cron and
+    # MCP. Use the probe your image ships ([fork] the build used here ships
+    # `hermes-healthcheck`). start_period is a ceiling, not a delay: it keeps
+    # long first-boot schema migrations in `starting` instead of `unhealthy`.
+    # healthcheck:
+    #   test: ["CMD", "<probe-command-your-image-ships>"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 30m
+
+    logging: *logging
+
+  # ---------------------------------------------------------------------------
+  # Optional sidecars — commented out. Read the rules before enabling one.
+  #
+  # ONE GATEWAY PER DATA DIRECTORY. Never start a second container from the
+  # Hermes image against ./data/hermes (for example a "dashboard" container):
+  # its supervisor starts a second gateway on the same bot token, which
+  # shows up as polling conflicts and silently dropped messages.
+  #
+  # Web UI (community or your own):
+  #   - must proxy chat through the gateway (its API server), never run its
+  #     own agent process against the same data directory;
+  #   - bind 127.0.0.1, require a strong password, expose via private ingress;
+  #   - no `depends_on: hermes` — `compose up webui` would then recreate the
+  #     gateway as a side effect (and empty /run/service);
+  #   - pin it by digest like the gateway; if it needs the agent's source,
+  #     mount a versioned read-only copy seeded from the pinned image;
+  #   - give it its own memory/CPU limits.
+  #
+  # webui:
+  #   image: "<webui-image>:<version>@sha256:<digest>"
+  #   ports:
+  #     - "127.0.0.1:8787:8787"
+  #   environment:
+  #     WEBUI_PASSWORD: ${WEBUI_PASSWORD:?set in .env}
+  #     # point chat at the gateway, e.g. http://hermes:8642
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #   restart: unless-stopped
+  #   logging: *logging
+  #
+  # Log viewer (Dozzle or similar):
+  #   - a mounted Docker socket is root on the host even with `:ro` (the flag
+  #     protects the socket file, not the API behind it);
+  #   - disable container actions, require auth, bind 127.0.0.1, or put a
+  #     read-only Docker socket proxy in front of it.
+  #
+  # logs:
+  #   image: "<log-viewer-image>:<version>@sha256:<digest>"
+  #   ports:
+  #     - "127.0.0.1:9999:8080"
+  #   environment:
+  #     DOZZLE_ENABLE_ACTIONS: "false"
+  #     DOZZLE_AUTH_PROVIDER: simple       # users file generated from .env
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   restart: unless-stopped
+  #   logging: *logging
+  #
+  # Browsers: run Chromium/Playwright in separate containers, not inside the
+  # gateway's cgroup, so a tab leak cannot take the gateway down. Put them on
+  # a network they share only with their controller (never with the gateway
+  # API), give each slot its own memory/CPU/pids caps and a size-capped
+  # profile, and publish no host ports from the slots.
