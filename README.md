@@ -85,6 +85,13 @@ Reusable agent procedures for running it:
 - [Archive-gated destructive cleanup](skills/archive-gated-destructive-cleanup/SKILL.md) — classify, archive and verify before deleting.
 - [Public contribution integrity](skills/public-contribution-integrity/SKILL.md) — publish to a public repository without leaking private history.
 
+### Efficient controllers
+
+Reduce unnecessary inference without removing outcome ownership: event gates, semantic review, compact current state, acknowledgment, recovery and rollback.
+
+- [English — Efficient Controllers: Events, State and Prompt Cache](guides/efficient-controllers.en.md)
+- [Русский — Эффективные контроллеры: события, состояние и кеш промпта](guides/efficient-controllers.ru.md)
+
 ### Weekly Learning Extraction
 
 Turn a week of real sessions into evidence-grounded lessons, audit the relevant skills and executable surfaces, and apply only explicitly authorized improvements.
