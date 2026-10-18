@@ -43,6 +43,8 @@ On the integrated GPU (Vulkan, three notes only) Parakeet reached 22.7x, Qwen3-A
 
 Speech enhancement (denoising) before ASR was not tried: published results show it usually hurts modern ASR models, which are trained on noisy audio.
 
+**Follow-up with references.** After the switch, the owner hand-corrected Parakeet's transcripts of five notes (15–139 s, picked across the noise range). Parakeet's word error rate against them is 1.2% overall and 0–2.4% per note, highest on the noisiest note. The corrections started from Parakeet's own output, so the number flatters Parakeet and cannot rank the other models. It serves as the baseline for judging the next model change.
+
 ## 4. What this setup runs now
 
 [Parakeet TDT 0.6B v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (NVIDIA, CC-BY-4.0; 25 European languages, language detected per note) on transcribe.cpp, CPU only, in its own container next to Hermes. The GGUF conversion comes from [handy-computer/parakeet-tdt-0.6b-v3-gguf](https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v3-gguf).
@@ -95,6 +97,7 @@ The client only uploads the file and writes the transcript to `{output_path}`. T
 3. Transcribe every note with each candidate, timing each call. Run Whisper the way production does; for the rest, transcribe.cpp's CLI takes `-m model.gguf` and a WAV file.
 4. Compare word counts per note. A model that is far below the others on a noisy note is dropping speech; one far above may be inventing it. Then listen to the noisiest notes while reading the candidates side by side.
 5. Decide on noisy notes, not clean ones: on clean audio the candidates look the same.
+6. After choosing, hand-correct about five of the winner's transcripts and keep them as a private test set. Score word error rate against it whenever the model or runtime changes. Correcting from one model's output biases the set toward that model, so use it to catch regressions, not to rank candidates.
 
 Never publish the transcripts. The numbers above are counts and timings only.
 
@@ -103,6 +106,6 @@ Never publish the transcripts. The numbers above are counts and timings only.
 - One speaker, one microphone setup, one host.
 - One note was truly noisy; most "noisy" picks were moderate.
 - No German notes and one English note in the sample.
-- No word error rate without reference transcripts.
+- The bake-off itself had no reference transcripts. The 1.2% word error rate comes from five later references corrected from Parakeet's own output.
 
 Re-run the comparison when you change model, quantization or runtime, and when your recording habits change.
