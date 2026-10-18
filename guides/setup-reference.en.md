@@ -168,6 +168,8 @@ The policy is **asserted, not locked**: the agent's uid can write `config.yaml`,
 
 On the fork build used here, the image bakes a managed config seed for the trio. It fills only leaves the user config omits: `config set` wins, `config unset` lets the seed show through. Upstream documents its managed scope as a lock; check which your build has, and keep the deploy assertion either way.
 
+**Voice notes.** If the owner sends voice messages from noisy places, test STT on their own recordings before settling on a model. This setup moved from local Whisper to Parakeet in a warm sidecar; the numbers and the design are in [Local Speech-to-Text](local-speech-to-text.en.md).
+
 ## 9. Identity in git
 
 Write `SOUL.md` and `ARCHITECTURE.md` from [`templates/SOUL.template.md`](../templates/SOUL.template.md) and [`templates/ARCHITECTURE.template.md`](../templates/ARCHITECTURE.template.md). Keep them in `hermes/identity/` and apply them additively to the data directory. `SOUL.md` loads from `$HERMES_HOME` on every build; the `ARCHITECTURE.md` slot is a feature of the fork build used here, so verify your version loads it. Slot order, size caps, two-way sync with a self-editing agent and the project-context hijack: [Identity, Memory and Context](identity-memory-context.en.md). Cron jobs and memory are runtime state, so they do **not** deploy through git.
