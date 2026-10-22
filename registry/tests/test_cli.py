@@ -17,7 +17,7 @@ class ValidateRegistryCommand(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         result = json.loads(proc.stdout)
         self.assertEqual(result["status"], "PASS")
-        self.assertEqual(result["counts"]["controls"], 14)
+        self.assertEqual(result["counts"]["controls"], 22)
 
 
 class EvaluateCommand(unittest.TestCase):
@@ -28,8 +28,8 @@ class EvaluateCommand(unittest.TestCase):
         report = json.loads(proc.stdout)
         self.assertEqual(report["as_of"], "2026-10-17")
         self.assertEqual(report["summary"]["needs_decision"], 2)
-        self.assertEqual(report["summary"]["required"], 6)
-        self.assertEqual(report["summary"]["total"], 8)
+        self.assertEqual(report["summary"]["required"], 8)
+        self.assertEqual(report["summary"]["total"], 10)
 
     def test_deterministic_stdout(self):
         first = run_cli("evaluate", "--profile", "public-surface",

@@ -1,0 +1,64 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-019",
+  "title": "Partial and blocked outcomes use honest status vocabulary",
+  "summary": "Outcome reports distinguish restored function from an established fix, partial from complete coverage, and blocked with a named cause and owner; no outcome is rounded up to success.",
+  "lifecycle": "active",
+  "category": "operations",
+  "protected": {
+    "asset": "The owner's ability to schedule downstream work on the real state of prior work",
+    "failure": "A repaired-but-unexplained function is reported as fixed, or a blocked task as done, and downstream work is scheduled on a false foundation."
+  },
+  "predicate": {
+    "all_of": []
+  },
+  "rationale": "'Function is currently restored; the cause is open' is an acceptable report; 'the cause is eliminated' requires the causal chain: the original failure, the hypothesis or change, a regression check, and data from a nominal run. A blocked item names the precise missing input or decision and who owns it, instead of a generic failure. Partial coverage states the examined fraction. Rounding any of these up to success converts an open question into invisible risk that later work inherits.",
+  "variants": [
+    {
+      "id": "status-vocabulary",
+      "description": "Every outcome report uses a fixed vocabulary: verified, exercised, implemented, restored-cause-open, blocked-with-named-cause; the wording is chosen by the strongest available evidence class."
+    },
+    {
+      "id": "claim-evidence-pairing",
+      "description": "Each success claim names the evidence that supports it; when evidence is missing, the claim is downgraded, never reworded to sound stronger."
+    }
+  ],
+  "automation": "manual",
+  "verification": {
+    "method": "Review one completed and one interrupted work item; confirm the reported wording matches the strongest available evidence class and that the blocked item names its cause and owner.",
+    "evidence": "The two reports with their evidence classes; private content stays out of the record."
+  },
+  "rollback": {
+    "method": "Drop the vocabulary requirement; reports remain readable but lose the evidence grading.",
+    "safety": "The vocabulary constrains reporting only; it never blocks the underlying work."
+  },
+  "failure_modes": [
+    "A single successful retry closes a repair whose scheduler-level cause was never found.",
+    "An exit code of zero is treated as functional proof of the feature.",
+    "A blocked item is silently dropped from the report instead of carried with its named cause."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0"
+      }
+    ],
+    "notes": "Operational practice control: applies to any reporting surface; the range records the builds whose reporting conventions the vocabulary was read against."
+  },
+  "last_verification": {
+    "date": "2026-10-22",
+    "registry_version": "0.2.0",
+    "notes": "General operational synthesis from recorded practice with private detail removed; no specific public incident is claimed."
+  },
+  "provenance": {
+    "origin": "synthesis",
+    "authors": [
+      "Beyond Prompting operational practice synthesis"
+    ],
+    "references": [
+      "General operational synthesis from recorded practice; no publicly verifiable incident is cited."
+    ]
+  },
+  "privacy": "public"
+}

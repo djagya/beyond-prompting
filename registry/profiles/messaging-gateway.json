@@ -29,6 +29,15 @@
     {
       "control": "FMR-012",
       "baseline": true
+    },
+    {
+      "control": "FMR-016",
+      "baseline": true,
+      "note": "Complements FMR-012: the ledger records intent, the readback proves delivery."
+    },
+    {
+      "control": "FMR-021",
+      "baseline": true
     }
   ]
 }

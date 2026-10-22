@@ -1,0 +1,67 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-015",
+  "title": "Repair is dispatched only against evidence on the exact current candidate",
+  "summary": "Before repair work is re-dispatched for a defect recorded against a superseded candidate, the defect signature is re-checked against the exact current accepted candidate; historical verdicts and administrative labels are not evidence of an open defect.",
+  "lifecycle": "active",
+  "category": "operations",
+  "protected": {
+    "asset": "Accepted work and the repair budget of an automated dispatch pipeline",
+    "failure": "A stale verdict or administrative label on an old candidate triggers redundant repair, or reverts later accepted work that already absorbed the defect."
+  },
+  "predicate": {
+    "fact": "deployment.unattended_jobs",
+    "op": "equals",
+    "value": true
+  },
+  "rationale": "An unattended controller that turns stored records into repair dispatches must distinguish the identity of the candidate a verdict belongs to from the label attached to it. A negative review verdict names the candidate it examined; later accepted changes may absorb or relocate the defect, and an administrative status (done, blocked) is bookkeeping rather than technical evidence in either direction. Re-deriving applicability from the current candidate identifier before scheduling repair prevents replaying history as if it were current state.",
+  "variants": [
+    {
+      "id": "signature-recheck",
+      "description": "Re-run the minimal failing check named in the historical verdict against the exact current candidate identifier; dispatch repair only when the same signature reproduces.",
+      "automation": "assisted"
+    },
+    {
+      "id": "owner-hold",
+      "description": "Where re-checking is disproportionate, hold the candidate repair and request a current applicability statement from the owning controller instead of dispatching."
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "Pick one historical negative verdict, identify the exact candidate it examined, and confirm the dispatch path requires a current-candidate re-check before repair is scheduled; walk one defect that was absorbed by later accepted work through the same path and confirm it is not dispatched.",
+    "evidence": "The historical verdict's candidate identifier, the current candidate identifier, and the re-check outcome for both cases; no full transcripts."
+  },
+  "rollback": {
+    "method": "Withdraw the gate to restore direct dispatch; the re-check itself mutates no state.",
+    "safety": "The re-check is read-only against the current candidate."
+  },
+  "failure_modes": [
+    "The re-check compares against a moving branch tip instead of an exact candidate identifier.",
+    "An administrative completion label is read as proof that the defect is gone.",
+    "A defect signature too vague to reproduce makes the re-check inconclusive; this must surface as undecided, never as a pass."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0"
+      }
+    ],
+    "notes": "Operational practice control: the range records the builds whose dispatch surfaces the procedure was read against, not a versioned platform feature."
+  },
+  "last_verification": {
+    "date": "2026-10-22",
+    "registry_version": "0.2.0",
+    "notes": "General operational synthesis from recorded practice with private detail removed; no specific public incident is claimed."
+  },
+  "provenance": {
+    "origin": "synthesis",
+    "authors": [
+      "Beyond Prompting operational practice synthesis"
+    ],
+    "references": [
+      "General operational synthesis from recorded practice; no publicly verifiable incident is cited."
+    ]
+  },
+  "privacy": "public"
+}

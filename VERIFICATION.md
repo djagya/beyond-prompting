@@ -1,0 +1,79 @@
+# Verification: operational-practice controls (registry 0.2.0)
+
+Sanitised verification note for the change that adds the operational-practice
+controls FMR-015 through FMR-022 on top of the ported registry scaffold.
+Commands use `$REPO` for the repository checkout; run from the repository root.
+No private paths, identifiers or source material are part of this note.
+
+## Tested tree
+
+- Base: the public `main` history (merge of the speech-to-text guide series).
+- Branch: `research/real-world-controls-v1`.
+- The exact candidate commit is recorded in the pull request; every command
+  below was run against the working tree of that commit.
+
+## What changed
+
+- Ported the previously reviewed registry scaffold (`registry/`,
+  `scripts/applicability.py`, `guides/control-registry.en.md` and its Russian
+  twin) onto the current public base. The port is byte-identical to the
+  reviewed source for those paths; the base's own newer content
+  (speech-to-text guide, later controller-guide revisions) is untouched.
+- Added eight operational-practice synthesis controls, FMR-015..FMR-022,
+  each marked `provenance.origin: synthesis`, and referenced them from the
+  relevant profiles (`private-server`, `messaging-gateway`,
+  `low-trust-ingestion`, `privileged-operator`).
+- Bumped the registry manifest to `registry_version 0.2.0` and
+  `as_of 2026-10-22`, and extended its description to separate synthetic seed
+  content from synthesis content.
+- Added a positive inventory fixture
+  (`registry/tests/fixtures/inventories/operator-console-unattended.json`),
+  evaluator tests for the new controls (positive, negative and
+  missing-fact cases), and updated existing count/expectation assertions.
+- Regenerated `registry/examples/report-public-surface.json` with the CLI.
+- Added a "seed vs synthesis" provenance section to both registry guide
+  translations (same heading structure).
+
+## Commands and results
+
+All of the following were run against the candidate tree; exit code 0 unless
+noted.
+
+```sh
+cd $REPO
+python3 scripts/applicability.py validate-registry
+python3 -m unittest discover -s registry/tests   # 72 tests, OK
+python3 scripts/validate.py                      # repository structural checks, PASS
+python3 scripts/applicability.py evaluate \
+    --profile public-surface \
+    --inventory registry/tests/fixtures/inventories/public-gateway.json \
+    --as-of 2026-10-17
+git diff --check
+```
+
+Determinism: the `evaluate` command above was run twice; both runs produced
+byte-identical reports (also covered by the test suite).
+
+## Honest limits
+
+- All inventories and fixtures are synthetic and labelled as such; they
+  exercise the controls, they do not prove any historical incident.
+- The synthesis controls are operational practice generalised from recorded
+  use with private detail removed; where a claim would be product-specific,
+  the control text says so instead of citing an incident.
+- Verification here is local: unit tests, the registry validator, the
+  repository structural validator and CLI determinism. No control was applied
+  to a live deployment, and no external CI was run for this change.
+- The verified version ranges on the practice controls are deliberately wide
+  (0.6.0–1.2.0); they record the builds the surrounding procedures were read
+  against, not a versioned platform feature.
+
+## Questions for review
+
+1. Are the profile assignments and baseline choices for FMR-015..FMR-022 the
+   ones you want (in particular FMR-018 as non-baseline in `private-server`)?
+2. Should the universal practice controls (FMR-017, FMR-019) also be
+   referenced from `workstation`, accepting that they then appear in every
+   workstation report?
+3. Is the wide verified range on practice controls acceptable, or should
+   practice controls carry a different freshness convention?

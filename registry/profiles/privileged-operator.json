@@ -20,6 +20,18 @@
     {
       "control": "FMR-013",
       "baseline": true
+    },
+    {
+      "control": "FMR-017",
+      "baseline": true
+    },
+    {
+      "control": "FMR-019",
+      "baseline": true
+    },
+    {
+      "control": "FMR-020",
+      "baseline": true
     }
   ]
 }

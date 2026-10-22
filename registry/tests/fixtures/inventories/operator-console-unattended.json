@@ -1,0 +1,22 @@
+{
+  "schema": "beyond-prompting/inventory@1",
+  "deployment": {
+    "kind": "operator-console",
+    "exposure": "private-network",
+    "unattended_jobs": true,
+    "owner_model": "individual"
+  },
+  "hermes": {"version": "1.1.0", "install": "git"},
+  "platform": {"os": "linux", "containerized": false, "runs_as_root": false},
+  "config": {
+    "redact_secrets": true,
+    "approvals_mode": "manual",
+    "unattended_mode": "deny",
+    "private_urls_blocked": true
+  },
+  "inputs": {"untrusted_content": true, "channels": ["documents", "messaging"]},
+  "messaging": {"connected": true},
+  "users": {"count": 1, "admins": 1},
+  "data_classes": ["personal", "credentials"],
+  "write_systems": ["filesystem", "git", "messaging"]
+}

@@ -10,12 +10,12 @@
   "profiles": [
     "public-surface"
   ],
-  "registry_as_of": "2026-10-01",
+  "registry_as_of": "2026-10-22",
   "registry_digest": {
     "algorithm": "sha256",
-    "value": "a472631268a831cb880fd0e8ab44f48eb3ccf4537220f39d6f4794c48332a731"
+    "value": "144d8d1eb5c8615e35a9866d997642583b2df401d44bf477fdc5be48c461bb7b"
   },
-  "registry_version": "0.1.0",
+  "registry_version": "0.2.0",
   "resolution": [],
   "results": [
     {
@@ -143,6 +143,36 @@
       ],
       "status": "required",
       "title": "Scheduled supply-chain audit"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-016",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Outbound delivery is confirmed by receipt readback"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-021",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Retained untrusted content is data, never a mandate"
     }
   ],
   "schema": "beyond-prompting/report@1",
@@ -150,8 +180,8 @@
     "needs_decision": 2,
     "not_applicable": 0,
     "recommended": 0,
-    "required": 6,
-    "total": 8,
+    "required": 8,
+    "total": 10,
     "unsupported": 0
   }
 }

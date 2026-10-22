@@ -14,6 +14,10 @@ The [registry](../registry/README.md) holds atomic hardening controls for Hermes
 
 `registry/` contains the manifest (`registry.json`), JSON Schemas, one control per file under `controls/`, profiles under `profiles/`, examples, and a unittest suite. The manifest pins the registry version, the reference date (`as_of`) and the maximum verification age in days; freshness is judged against the supplied as-of date, never against your clock.
 
+## Seed content and synthesis provenance
+
+Two kinds of controls live side by side, marked by `provenance.origin`. The seed controls (FMR-001 through FMR-014) and all test inventories are synthetic examples: their version ranges, dates and scenarios are illustrative placeholders, not claims about any specific Hermes release or incident. Controls from FMR-015 onward are operational-practice synthesis (`origin: synthesis`): practices generalised from recorded operational use with all private detail removed. A synthesis control describes a practice that proved itself in operation; it does not cite a publicly verifiable incident, and it says so in its own references. Synthetic fixtures exercise both kinds; they never prove that a historical incident occurred.
+
 ## Applicability statuses
 
 Every control in the resolved set receives exactly one status:

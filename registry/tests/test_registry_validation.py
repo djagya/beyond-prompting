@@ -9,7 +9,7 @@ class SeedRegistryPasses(unittest.TestCase):
     def test_seed_registry_passes(self):
         result = applicability.validate_registry(load_seed_registry())
         self.assertEqual(result["status"], "PASS", result["errors"])
-        self.assertEqual(result["counts"]["controls"], 14)
+        self.assertEqual(result["counts"]["controls"], 22)
         self.assertEqual(result["counts"]["profiles"], 7)
         self.assertEqual(result["counts"]["deprecated"], 1)
 

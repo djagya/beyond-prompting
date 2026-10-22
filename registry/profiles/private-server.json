@@ -27,6 +27,18 @@
     {
       "control": "FMR-013",
       "baseline": false
+    },
+    {
+      "control": "FMR-015",
+      "baseline": true
+    },
+    {
+      "control": "FMR-018",
+      "baseline": false
+    },
+    {
+      "control": "FMR-022",
+      "baseline": true
     }
   ]
 }

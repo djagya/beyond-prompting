@@ -22,6 +22,7 @@ class Statuses(unittest.TestCase):
             "FMR-001": "required", "FMR-002": "required", "FMR-005": "required",
             "FMR-009": "required", "FMR-010": "needs_decision", "FMR-011": "needs_decision",
             "FMR-012": "required", "FMR-013": "required",
+            "FMR-016": "required", "FMR-021": "required",
         })
         by_id = status_map(report)
         self.assertEqual(by_id["FMR-010"]["conflicts_with"], ["FMR-011"])
@@ -29,7 +30,7 @@ class Statuses(unittest.TestCase):
         for cid in ("FMR-010", "FMR-011"):
             sources = {r["source"] for r in by_id[cid]["reasons"]}
             self.assertIn("conflict.control", sources)
-        self.assertEqual(report["summary"]["total"], 8)
+        self.assertEqual(report["summary"]["total"], 10)
         self.assertEqual(report["summary"]["needs_decision"], 2)
 
     def test_workstation_supersession_resolution(self):
@@ -64,6 +65,10 @@ class Statuses(unittest.TestCase):
         # Controls verified down to this version keep applying.
         self.assertEqual(by_id["FMR-001"]["status"], "required")
         self.assertEqual(by_id["FMR-013"]["status"], "recommended")
+        # Practice synthesis controls carry wide ranges and stay applicable too.
+        self.assertEqual(by_id["FMR-015"]["status"], "required")
+        self.assertEqual(by_id["FMR-022"]["status"], "required")
+        self.assertEqual(by_id["FMR-018"]["status"], "recommended")
 
     def test_version_range_bounds_are_inclusive(self):
         inventory = load_inventory("old-version-server.json")
@@ -132,7 +137,12 @@ class Statuses(unittest.TestCase):
         self.assertEqual(by_id["FMR-003"]["status"], "required")
         self.assertEqual(by_id["FMR-003"]["profiles"], ["private-server"])
         self.assertEqual(by_id["FMR-006"]["status"], "recommended")
-        self.assertEqual(report["summary"]["total"], 8)
+        # Practice controls inherited from private-server on an unattended deployment.
+        self.assertEqual(by_id["FMR-015"]["status"], "required")
+        self.assertEqual(by_id["FMR-015"]["profiles"], ["private-server"])
+        self.assertEqual(by_id["FMR-018"]["status"], "recommended")
+        self.assertEqual(by_id["FMR-022"]["status"], "required")
+        self.assertEqual(report["summary"]["total"], 11)
 
 
 class ProfileComposition(unittest.TestCase):
@@ -277,6 +287,61 @@ class PredicateLogic(unittest.TestCase):
     def test_not_equals_scalar(self):
         verdict, _ = self.ev({"fact": "deployment.exposure", "op": "not_equals", "value": "public"})
         self.assertIs(verdict, True)
+
+
+class PracticeControls(unittest.TestCase):
+    """Positive and negative fixtures for the operational-practice controls FMR-015..FMR-022."""
+
+    PROFILES = ["private-server", "messaging-gateway", "low-trust-ingestion", "privileged-operator"]
+
+    def test_positive_fixture_applies_all_practice_controls(self):
+        report = evaluate(self.PROFILES, load_inventory("operator-console-unattended.json"))
+        by_id = status_map(report)
+        expected = {
+            "FMR-015": "required",   # unattended jobs: exact-candidate re-check
+            "FMR-016": "required",   # messaging connected: receipt readback
+            "FMR-017": "required",   # universal: store separation
+            "FMR-018": "recommended",  # unattended jobs: aggregate honesty (non-baseline)
+            "FMR-019": "required",   # universal: honest status vocabulary
+            "FMR-020": "required",   # data_classes contains credentials
+            "FMR-021": "required",   # untrusted content: data not mandate
+            "FMR-022": "required",   # unattended jobs: missing state is unknown
+        }
+        for cid, status in expected.items():
+            with self.subTest(control=cid):
+                self.assertEqual(by_id[cid]["status"], status, by_id[cid]["reasons"])
+        # FMR-021 arrives from two independent profiles with the same baseline.
+        self.assertEqual(by_id["FMR-021"]["profiles"], ["low-trust-ingestion", "messaging-gateway"])
+
+    def test_negative_fixture_marks_fact_gated_controls_not_applicable(self):
+        inventory = load_inventory("workstation-minimal.json")
+        inventory["messaging"] = {"connected": False}
+        inventory["inputs"] = {"untrusted_content": False, "channels": ["documents"]}
+        inventory["data_classes"] = ["none"]
+        report = evaluate(self.PROFILES, inventory)
+        by_id = status_map(report)
+        for cid in ("FMR-015", "FMR-016", "FMR-018", "FMR-021", "FMR-022"):
+            with self.subTest(control=cid):
+                self.assertEqual(by_id[cid]["status"], "not_applicable")
+                sources = {r["source"] for r in by_id[cid]["reasons"]}
+                self.assertEqual(sources, {"predicate.false"})
+        # FMR-020 with data_classes present but without credentials is a clean no.
+        self.assertEqual(by_id["FMR-020"]["status"], "not_applicable")
+
+    def test_missing_facts_surface_needs_decision_never_false(self):
+        # workstation-minimal omits messaging, inputs and data_classes entirely.
+        report = evaluate(self.PROFILES, load_inventory("workstation-minimal.json"))
+        by_id = status_map(report)
+        for cid, fact in (("FMR-016", "messaging.connected"),
+                          ("FMR-021", "inputs.untrusted_content"),
+                          ("FMR-020", "data_classes")):
+            with self.subTest(control=cid):
+                self.assertEqual(by_id[cid]["status"], "needs_decision")
+                detail = " ".join(r["detail"] for r in by_id[cid]["reasons"])
+                self.assertIn(fact, detail)
+        # Universal practice controls still apply on the minimal inventory.
+        self.assertEqual(by_id["FMR-017"]["status"], "required")
+        self.assertEqual(by_id["FMR-019"]["status"], "required")
 
 
 if __name__ == "__main__":
