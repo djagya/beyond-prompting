@@ -1,0 +1,62 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-001",
+  "title": "Gateway service runs under a non-root identity",
+  "summary": "The service process serving Hermes must not run as root; it runs as a dedicated unprivileged runtime identity.",
+  "lifecycle": "active",
+  "category": "identity",
+  "protected": {
+    "asset": "The Hermes data home and the host around it",
+    "failure": "An agent or extension compromise executes with host-administrative privilege."
+  },
+  "predicate": {
+    "fact": "platform.runs_as_root",
+    "op": "equals",
+    "value": false
+  },
+  "rationale": "A long-running process that executes model-influenced tool calls is a privileged-escalation surface. Running it as a dedicated unprivileged user bounds a compromise to the deployment's own files instead of the whole host. Container images that start as root only to remap a UID are judged by the effective user of the running process, not by the entrypoint.",
+  "variants": [
+    {
+      "id": "os-user",
+      "description": "Dedicated unprivileged OS user owns the data home and runs the service; no other privilege path reaches the deployment."
+    },
+    {
+      "id": "container-remap",
+      "description": "Container entrypoint remaps to a runtime UID and drops privileges; interactive inspection runs as that same runtime user.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "Read the effective user of the running service process through the deployment's own supervision or init surface, and check that no files in the data home are owned by root after normal operation.",
+    "evidence": "Effective user identifier of the service process plus a file-ownership summary of the data home; no process environment contents."
+  },
+  "rollback": {
+    "method": "Restore the previous service-user assignment and correct file ownership of the data home before restarting the service.",
+    "safety": "Ownership changes while the service is stopped, never against a live data directory."
+  },
+  "failure_modes": [
+    "An image entrypoint starts as root by design and the remap step is skipped or fails silently.",
+    "Interactive shell access lands as root and leaves root-owned files in the data home, breaking later startup.",
+    "Ownership drift after a restore leaves mixed owners inside the data home."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-09-15",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

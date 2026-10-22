@@ -1,0 +1,15 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "fixture-unknown-extends",
+  "title": "Fixture profile fixture-unknown-extends",
+  "description": "Synthetic negative-fixture profile.",
+  "controls": [
+    {
+      "control": "FMR-002",
+      "baseline": true
+    }
+  ],
+  "extends": [
+    "no-such-profile"
+  ]
+}

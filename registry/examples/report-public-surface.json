@@ -1,0 +1,157 @@
+{
+  "as_of": "2026-10-17",
+  "inventory_digest": {
+    "algorithm": "sha256",
+    "value": "f8da528710f0aa833965897059d35d008c1301af1949d8fc281c66fe8a615f3f"
+  },
+  "policy": {
+    "max_verification_age_days": 365
+  },
+  "profiles": [
+    "public-surface"
+  ],
+  "registry_as_of": "2026-10-01",
+  "registry_digest": {
+    "algorithm": "sha256",
+    "value": "a472631268a831cb880fd0e8ab44f48eb3ccf4537220f39d6f4794c48332a731"
+  },
+  "registry_version": "0.1.0",
+  "resolution": [],
+  "results": [
+    {
+      "baseline": true,
+      "control": "FMR-001",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Gateway service runs under a non-root identity"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-002",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Secret redaction is enabled in every Hermes home"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-005",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Exposed dashboards and APIs require authentication"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-009",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Approval policy fails closed across session modes"
+    },
+    {
+      "baseline": true,
+      "conflicts_with": [
+        "FMR-011"
+      ],
+      "control": "FMR-010",
+      "profiles": [
+        "public-surface"
+      ],
+      "reasons": [
+        {
+          "detail": "conflicts with FMR-011; both designs apply and the operator must choose one",
+          "source": "conflict.control"
+        }
+      ],
+      "status": "needs_decision",
+      "title": "Egress limited to an allowlisted inspecting proxy"
+    },
+    {
+      "baseline": true,
+      "conflicts_with": [
+        "FMR-010"
+      ],
+      "control": "FMR-011",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "conflicts with FMR-010; both designs apply and the operator must choose one",
+          "source": "conflict.control"
+        }
+      ],
+      "status": "needs_decision",
+      "title": "Direct egress restricted to pinned endpoints"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-012",
+      "profiles": [
+        "messaging-gateway"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Durable delivery ledger for outbound messages"
+    },
+    {
+      "baseline": true,
+      "control": "FMR-013",
+      "profiles": [
+        "public-surface"
+      ],
+      "reasons": [
+        {
+          "detail": "omission violates the declared baseline of profile(s): public-surface",
+          "source": "profile.baseline"
+        }
+      ],
+      "status": "required",
+      "title": "Scheduled supply-chain audit"
+    }
+  ],
+  "schema": "beyond-prompting/report@1",
+  "summary": {
+    "needs_decision": 2,
+    "not_applicable": 0,
+    "recommended": 0,
+    "required": 6,
+    "total": 8,
+    "unsupported": 0
+  }
+}

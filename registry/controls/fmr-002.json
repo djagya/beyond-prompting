@@ -1,0 +1,60 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-002",
+  "title": "Secret redaction is enabled in every Hermes home",
+  "summary": "Secret values are redacted before they reach model-visible context or stored transcripts.",
+  "lifecycle": "active",
+  "category": "secrets",
+  "protected": {
+    "asset": "Credentials referenced by the deployment",
+    "failure": "Secret values are printed into transcripts, reports or model context where they can be exfiltrated or committed."
+  },
+  "predicate": {
+    "fact": "config.redact_secrets",
+    "op": "equals",
+    "value": true
+  },
+  "rationale": "Redaction is a cheap, high-leverage default: it reduces accidental disclosure in every downstream artifact without changing any credential. It reduces accidental disclosure; it does not prevent exfiltration by a malicious process with the same access, and the registry never treats it as containment.",
+  "variants": [
+    {
+      "id": "config-flag",
+      "description": "Enable the deployment's secret-redaction setting in every home of the deployment."
+    },
+    {
+      "id": "config-flag-plus-scan",
+      "description": "Enable redaction and additionally sweep configuration and report files for literal credential shapes before any mirror or publication.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read the resolved secret-redaction setting back per home and confirm the effective value in each, including named profiles that may inherit built-in defaults.",
+    "evidence": "Per-home read-back of the setting name and effective value only."
+  },
+  "rollback": {
+    "method": "Restore the previous setting value; redaction itself has no state beyond configuration."
+  },
+  "failure_modes": [
+    "A named profile inherits a permissive built-in default instead of the intended value.",
+    "Redaction is read as enabled from one home and wrongly assumed for every other home."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.5.0",
+        "maximum": "1.2.0"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-09-10",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

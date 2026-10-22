@@ -1,0 +1,10 @@
+{
+  "schema": "beyond-prompting/registry@1",
+  "registry_version": "0.1.0",
+  "title": "Hermes hardening registry",
+  "description": "Synthetic seed registry of atomic hardening controls and composable deployment profiles with a deterministic applicability evaluator. Seed content is generic and original: version ranges, dates and examples are illustrative placeholders, not claims about any specific Hermes release.",
+  "as_of": "2026-10-01",
+  "policy": {
+    "max_verification_age_days": 365
+  }
+}

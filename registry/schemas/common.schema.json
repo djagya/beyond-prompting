@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beyond-prompting.example/registry/schemas/common.schema.json",
+  "title": "Shared definitions for the hardening registry",
+  "description": "Common definitions referenced by the other registry schemas. The $id URIs under beyond-prompting.example are opaque identifiers, not fetched URLs; consumers register these documents in a local schema registry before validating.",
+  "$defs": {
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "short_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "control_id": {
+      "type": "string",
+      "pattern": "^FMR-[0-9]{3}$"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "version_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "description": "Inclusive minimum and maximum Hermes versions in which this control was verified. minimum must not exceed maximum (checked by the registry validator).",
+      "properties": {
+        "minimum": {"$ref": "#/$defs/version"},
+        "maximum": {"$ref": "#/$defs/version"}
+      }
+    },
+    "scalar": {
+      "description": "A single comparable inventory value. Null is deliberately excluded: an absent fact is represented by the fact being missing, never by null.",
+      "type": ["boolean", "integer", "number", "string"]
+    },
+    "predicate": {
+      "description": "Three-valued applicability predicate over inventory facts. Evaluation is Kleene logic: a missing or type-mismatched fact evaluates to UNKNOWN, never to false. An empty all_of list is vacuously true; an empty any_of list is false.",
+      "anyOf": [
+        {"$ref": "#/$defs/condition"},
+        {"$ref": "#/$defs/all_of_node"},
+        {"$ref": "#/$defs/any_of_node"},
+        {"$ref": "#/$defs/not_node"}
+      ]
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact", "op"],
+      "properties": {
+        "fact": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+          "description": "Dotted path into the metadata-safe inventory, for example deployment.exposure."
+        },
+        "op": {
+          "enum": ["equals", "not_equals", "in", "not_in", "contains", "exists", "not_exists", "gt", "gte", "lt", "lte"]
+        },
+        "value": {
+          "description": "Comparison value. Required for every operator except exists and not_exists, where it is forbidden."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"op": {"enum": ["equals", "not_equals", "contains", "gt", "gte", "lt", "lte"]}}},
+          "then": {
+            "required": ["value"],
+            "properties": {"value": {"$ref": "#/$defs/scalar"}}
+          }
+        },
+        {
+          "if": {"properties": {"op": {"enum": ["in", "not_in"]}}},
+          "then": {
+            "required": ["value"],
+            "properties": {
+              "value": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"$ref": "#/$defs/scalar"}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"op": {"enum": ["exists", "not_exists"]}}},
+          "then": {"not": {"required": ["value"]}}
+        }
+      ]
+    },
+    "all_of_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all_of"],
+      "properties": {
+        "all_of": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/predicate"}
+        }
+      }
+    },
+    "any_of_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["any_of"],
+      "properties": {
+        "any_of": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/predicate"}
+        }
+      }
+    },
+    "not_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["not"],
+      "properties": {
+        "not": {"$ref": "#/$defs/predicate"}
+      }
+    }
+  }
+}

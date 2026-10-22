@@ -1,0 +1,62 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-003",
+  "title": "Unattended sessions fail closed",
+  "summary": "Cron, one-shot and webhook-driven sessions cannot execute actions that interactive approval would have blocked.",
+  "lifecycle": "active",
+  "category": "approvals",
+  "protected": {
+    "asset": "Write-capable systems reachable from unattended jobs",
+    "failure": "An injected instruction inside scheduled content drives a privileged action while no human can approve it."
+  },
+  "predicate": {
+    "fact": "deployment.unattended_jobs",
+    "op": "equals",
+    "value": true
+  },
+  "rationale": "Unattended sessions combine model execution with absent humans. The safe default is a closed failure posture: actions that need approval are denied rather than queued, deferred to the next supervised window, or executed through an explicit external execution boundary the owner designed. This control applies only when unattended jobs exist at all.",
+  "variants": [
+    {
+      "id": "deny-mode",
+      "description": "Set every unattended approval mode the build provides to deny, and read the values back."
+    },
+    {
+      "id": "external-boundary",
+      "description": "Keep approvals open only inside an operator-designed execution boundary that queues outward actions for supervised release.",
+      "automation": "manual"
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read every unattended approval mode the build exposes and its effective value; where the build offers a non-mutating approval test, run it and record the verdicts.",
+    "evidence": "Read-back of mode names and values, plus non-mutating denial verdicts where available. Never execute a dangerous action to test denial."
+  },
+  "rollback": {
+    "method": "Restore the previous approval-mode values per home.",
+    "safety": "Restoring permissive unattended modes is itself a security regression; record who accepted it."
+  },
+  "failure_modes": [
+    "A build lacks one of the unattended mode keys, leaving a silent open path that must be bounded externally.",
+    "Denial verdicts are claimed from documentation instead of read back on the target.",
+    "A queue-based boundary silently auto-releases aged items."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.8.0",
+        "maximum": "1.2.0"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-09-20",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

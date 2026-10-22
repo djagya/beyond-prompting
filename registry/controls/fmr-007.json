@@ -1,0 +1,59 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-007",
+  "title": "Protected pre-change backup exists",
+  "summary": "Before consequential changes, a protected backup of the affected state exists and its restore path is known.",
+  "lifecycle": "active",
+  "category": "recovery",
+  "protected": {
+    "asset": "Configuration, state and identity data of the deployment",
+    "failure": "A hardening change corrupts or locks out the deployment and no tested recovery point remains."
+  },
+  "predicate": {
+    "all_of": []
+  },
+  "rationale": "Every hardening change is a potential outage. A backup taken before the change, stored where the change cannot destroy it, with an owner-held recovery route outside the agent's control, converts worst-case failure into a bounded incident. A created archive is not a tested restore; the recovery route must have been exercised at least once on an isolated target.",
+  "variants": [
+    {
+      "id": "native-backup",
+      "description": "Use the deployment's own backup command with a scope that provably covers every change target, into protected storage."
+    },
+    {
+      "id": "snapshot-plus-config",
+      "description": "Filesystem or volume snapshot plus a copied configuration tree, for change sets the native backup scope does not cover.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "Confirm a backup artifact exists for the change window, that its documented scope covers every planned change target, that it is stored outside the change blast radius, and that a restore has been exercised on an isolated target at least once.",
+    "evidence": "Backup receipt with scope and timestamp and storage location class; the isolated restore exercise record; no backup contents."
+  },
+  "rollback": {
+    "method": "Not applicable: this control is itself the rollback precondition for other controls."
+  },
+  "failure_modes": [
+    "The backup scope silently omits project files or external state the change touches.",
+    "The backup is stored inside the blast radius of the change.",
+    "Restore was never exercised, so recovery is assumed rather than known."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.5.0",
+        "maximum": "1.2.0"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-08-30",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

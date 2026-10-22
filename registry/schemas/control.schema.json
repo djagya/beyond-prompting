@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beyond-prompting.example/registry/schemas/control.schema.json",
+  "title": "Atomic hardening control",
+  "description": "One atomic, independently verifiable hardening control. A control describes and classifies; it never executes. Structural constraints live here; referential and lifecycle-semantic constraints (conflict symmetry, supersession acyclicity, staleness against the registry reference date, file naming) are enforced by the registry validator in scripts/applicability.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "lifecycle",
+    "category",
+    "protected",
+    "predicate",
+    "rationale",
+    "variants",
+    "automation",
+    "verification",
+    "rollback",
+    "failure_modes",
+    "hermes_versions",
+    "last_verification",
+    "provenance",
+    "privacy"
+  ],
+  "properties": {
+    "schema": {"const": "beyond-prompting/control@1"},
+    "id": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"},
+    "title": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/short_string"},
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "lifecycle": {
+      "description": "draft: not yet reviewable; active: usable; deprecated: superseded, still resolvable to its successor; retired: terminal, must not be referenced by profiles.",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "category": {
+      "enum": ["recovery", "identity", "secrets", "approvals", "network", "isolation", "supply-chain", "operations"]
+    },
+    "protected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset", "failure"],
+      "properties": {
+        "asset": {
+          "description": "What this control protects, stated generically.",
+          "$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/short_string"
+        },
+        "failure": {
+          "description": "The concrete failure the control prevents.",
+          "$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/short_string"
+        }
+      }
+    },
+    "predicate": {
+      "description": "Applicability predicate over a metadata-safe inventory. Missing facts stay UNKNOWN and surface as needs_decision, never as not_applicable.",
+      "$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/predicate"
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["control", "reason"],
+        "properties": {
+          "control": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"},
+          "reason": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/short_string"}
+        }
+      }
+    },
+    "rationale": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/nonempty_string"},
+    "variants": {
+      "description": "At least one implementation variant; more when deployments materially differ.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 60},
+          "description": {"type": "string", "minLength": 1, "maxLength": 500},
+          "automation": {"enum": ["manual", "assisted", "automated"]}
+        }
+      }
+    },
+    "automation": {"enum": ["manual", "assisted", "automated"]},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "evidence"],
+      "properties": {
+        "method": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "evidence": {
+          "description": "What decision-relevant evidence looks like, without secret values.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "safety": {"type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    },
+    "failure_modes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1, "maxLength": 500}
+    },
+    "hermes_versions": {
+      "description": "Verified version ranges only. A target Hermes version outside every range evaluates to unsupported, never to a silent pass.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified"],
+      "properties": {
+        "verified": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/version_range"}
+        },
+        "notes": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "last_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "registry_version"],
+      "properties": {
+        "date": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/date"},
+        "registry_version": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/version"},
+        "notes": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "authors"],
+      "properties": {
+        "origin": {
+          "description": "original: written for this registry; synthesis: distilled from recorded practice with private detail removed; adapted: derived from an external source named in references.",
+          "enum": ["original", "synthesis", "adapted"]
+        },
+        "authors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1, "maxLength": 120}
+        },
+        "references": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 300}
+        }
+      }
+    },
+    "privacy": {
+      "description": "public: safe for publication after review; internal: contains deployment-specific detail and must not leave the owner's environment.",
+      "enum": ["public", "internal"]
+    },
+    "supersession": {
+      "description": "Deprecated controls must name exactly one active successor in superseded_by; active and draft controls must not name one.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "supersedes": {
+          "type": "array",
+          "items": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"}
+        },
+        "superseded_by": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"required": ["lifecycle"], "properties": {"lifecycle": {"const": "deprecated"}}},
+      "then": {"required": ["supersession"], "properties": {"supersession": {"required": ["superseded_by"]}}}
+    },
+    {
+      "if": {"required": ["supersession"], "properties": {"supersession": {"required": ["superseded_by"]}}},
+      "then": {"required": ["lifecycle"], "properties": {"lifecycle": {"const": "deprecated"}}}
+    }
+  ]
+}

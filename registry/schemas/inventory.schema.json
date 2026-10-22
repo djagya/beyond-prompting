@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beyond-prompting.example/registry/schemas/inventory.schema.json",
+  "title": "Metadata-safe deployment inventory",
+  "description": "Structured deployment facts consumed by the applicability evaluator. Every object closes additionalProperties, so the inventory cannot carry free text, secrets, identifiers or private values: only the enumerated facts below. Sections are optional; a missing section makes every predicate fact under it UNKNOWN, which surfaces as needs_decision, never as a silent false. The evaluator only reads this document; it never inspects a host or runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema"],
+  "properties": {
+    "schema": {"const": "beyond-prompting/inventory@1"},
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "exposure", "unattended_jobs", "owner_model"],
+      "properties": {
+        "kind": {"enum": ["workstation", "private-server", "messaging-gateway", "team-runtime", "ingestion-service", "operator-console", "public-service"]},
+        "exposure": {"enum": ["loopback", "private-network", "vpn", "public"]},
+        "unattended_jobs": {"type": "boolean"},
+        "owner_model": {"enum": ["individual", "team", "client"]}
+      }
+    },
+    "hermes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "install"],
+      "properties": {
+        "version": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/version"},
+        "install": {"enum": ["git", "image", "managed"]}
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "containerized", "runs_as_root"],
+      "properties": {
+        "os": {"enum": ["linux", "macos", "windows"]},
+        "containerized": {"type": "boolean"},
+        "runs_as_root": {"type": "boolean"}
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["redact_secrets", "approvals_mode", "unattended_mode", "private_urls_blocked"],
+      "properties": {
+        "redact_secrets": {"type": "boolean"},
+        "approvals_mode": {"enum": ["off", "smart", "manual"]},
+        "unattended_mode": {"enum": ["allow", "deny"]},
+        "private_urls_blocked": {"type": "boolean"}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["untrusted_content", "channels"],
+      "properties": {
+        "untrusted_content": {"type": "boolean"},
+        "channels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["messaging", "web", "email", "documents", "voice"]}
+        }
+      }
+    },
+    "messaging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connected"],
+      "properties": {"connected": {"type": "boolean"}}
+    },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {"enabled": {"type": "boolean"}}
+    },
+    "users": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "admins"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "admins": {"type": "integer", "minimum": 0, "maximum": 10000}
+      }
+    },
+    "data_classes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["personal", "client", "financial", "credentials", "none"]}
+    },
+    "write_systems": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["filesystem", "git", "messaging", "payments", "cloud-services", "none"]}
+    }
+  }
+}

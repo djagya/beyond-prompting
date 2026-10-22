@@ -1,0 +1,18 @@
+{
+  "schema": "beyond-prompting/inventory@1",
+  "deployment": {
+    "kind": "private-server",
+    "exposure": "vpn",
+    "unattended_jobs": true,
+    "owner_model": "individual"
+  },
+  "hermes": {"version": "0.7.2", "install": "git"},
+  "platform": {"os": "linux", "containerized": true, "runs_as_root": false},
+  "config": {
+    "redact_secrets": true,
+    "approvals_mode": "smart",
+    "unattended_mode": "deny",
+    "private_urls_blocked": true
+  },
+  "users": {"count": 1, "admins": 1}
+}

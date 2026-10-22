@@ -1,0 +1,70 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-011",
+  "title": "Direct egress restricted to pinned endpoints",
+  "summary": "Direct outbound connections are permitted only to individually pinned endpoints, with no open egress.",
+  "lifecycle": "active",
+  "category": "network",
+  "protected": {
+    "asset": "Internal networks and third-party endpoints",
+    "failure": "Instructed content exfiltrates data to any destination other than the few pinned ones."
+  },
+  "predicate": {
+    "fact": "deployment.exposure",
+    "op": "in",
+    "value": [
+      "vpn",
+      "public"
+    ]
+  },
+  "rationale": "Where a proxy cannot be operated, a pinned-endpoint allowlist is the alternative: each destination is an explicit, individually reviewed entry, and everything else is unreachable. It is weaker in auditability than an inspecting proxy but equally closed by default; running both designs at once hides which one actually governs traffic.",
+  "variants": [
+    {
+      "id": "host-firewall-pins",
+      "description": "Host-level firewall pins each allowed destination address or range; the default stance is deny."
+    },
+    {
+      "id": "network-policy-pins",
+      "description": "Network-layer policy pins destinations for containerized deployments, with the pins owned by the platform, not the workload.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "From the deployment's network position, attempt egress to a pinned destination and to a deliberately unknown destination; only the first may succeed. Read the pin inventory and its ownership.",
+    "evidence": "Probe outcomes and pin count with owners; no endpoint addresses beyond the fact they are pinned."
+  },
+  "rollback": {
+    "method": "Remove the pins and restore prior egress rules, re-testing that intended destinations still resolve."
+  },
+  "failure_modes": [
+    "Wildcard pins creep in during incident response and never leave.",
+    "Pins live in workload-owned config the workload can edit.",
+    "Domain-based pins silently resolve to new addresses."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-09-05",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public",
+  "conflicts": [
+    {
+      "control": "FMR-010",
+      "reason": "Mutually exclusive egress designs: pinned direct egress bypasses the proxy path the allowlisting design assumes."
+    }
+  ]
+}

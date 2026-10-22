@@ -1,0 +1,23 @@
+{
+  "schema": "beyond-prompting/inventory@1",
+  "deployment": {
+    "kind": "messaging-gateway",
+    "exposure": "public",
+    "unattended_jobs": true,
+    "owner_model": "team"
+  },
+  "hermes": {"version": "1.1.0", "install": "image"},
+  "platform": {"os": "linux", "containerized": true, "runs_as_root": false},
+  "config": {
+    "redact_secrets": true,
+    "approvals_mode": "smart",
+    "unattended_mode": "deny",
+    "private_urls_blocked": true
+  },
+  "inputs": {"untrusted_content": true, "channels": ["web", "messaging"]},
+  "messaging": {"connected": true},
+  "browser": {"enabled": true},
+  "users": {"count": 3, "admins": 1},
+  "data_classes": ["personal", "client"],
+  "write_systems": ["messaging", "filesystem"]
+}

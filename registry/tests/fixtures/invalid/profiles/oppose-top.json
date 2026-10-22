@@ -1,0 +1,16 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "oppose-top",
+  "title": "Fixture profile oppose-top",
+  "description": "Synthetic fixture: composition exposing the opposing declarations.",
+  "controls": [
+    {
+      "control": "FMR-003",
+      "baseline": true
+    }
+  ],
+  "extends": [
+    "oppose-left",
+    "oppose-right"
+  ]
+}

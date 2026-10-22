@@ -1,0 +1,32 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "private-server",
+  "title": "Private always-on single-user server",
+  "description": "An always-on deployment, remotely reachable only by its owner, single-user.",
+  "controls": [
+    {
+      "control": "FMR-001",
+      "baseline": true
+    },
+    {
+      "control": "FMR-002",
+      "baseline": true
+    },
+    {
+      "control": "FMR-003",
+      "baseline": true
+    },
+    {
+      "control": "FMR-007",
+      "baseline": true
+    },
+    {
+      "control": "FMR-009",
+      "baseline": true
+    },
+    {
+      "control": "FMR-013",
+      "baseline": false
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beyond-prompting.example/registry/schemas/evidence.schema.json",
+  "title": "Verification evidence record",
+  "description": "One evidence record collected when a human or agent verifies a control against a real target (VERIFY mode). Evidence describes the method and the decision-relevant result; it never contains secret values, credentials, private identifiers or raw sensitive output. Artifact references identify where a record lives, not its contents.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "control", "status", "collected_at", "method", "result_summary", "redaction"],
+  "properties": {
+    "schema": {"const": "beyond-prompting/evidence@1"},
+    "control": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"},
+    "variant": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 60},
+    "profile": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/profile_id"},
+    "status": {
+      "description": "Aligned with the hardening checklist vocabulary, not with applicability statuses: this records what verification found, after applicability was decided.",
+      "enum": ["pass", "partial", "fail", "not_applicable", "needs_decision", "unsupported"]
+    },
+    "collected_at": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/date"},
+    "method": {
+      "description": "The command, procedure or read-back used, stated exactly enough to repeat.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "result_summary": {
+      "description": "Decision-relevant outcome only. No secret values, no private identifiers.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied"],
+      "properties": {
+        "applied": {"type": "boolean"},
+        "notes": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "reference"],
+        "properties": {
+          "kind": {"enum": ["log", "config-readback", "command-output", "attestation", "report"]},
+          "reference": {
+            "description": "Path or identifier of the retained artifact, not its contents.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "digest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["algorithm", "value"],
+            "properties": {
+              "algorithm": {"const": "sha256"},
+              "value": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

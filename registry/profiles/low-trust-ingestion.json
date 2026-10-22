@@ -1,0 +1,24 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "low-trust-ingestion",
+  "title": "Low-trust web, email and document ingestion",
+  "description": "A profile whose primary job is ingesting untrusted web, email or document content.",
+  "controls": [
+    {
+      "control": "FMR-002",
+      "baseline": true
+    },
+    {
+      "control": "FMR-004",
+      "baseline": true
+    },
+    {
+      "control": "FMR-006",
+      "baseline": true
+    },
+    {
+      "control": "FMR-009",
+      "baseline": true
+    }
+  ]
+}

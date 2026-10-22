@@ -1,0 +1,12 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "diamond-base",
+  "title": "Fixture profile diamond-base",
+  "description": "Synthetic fixture: shared ancestor of a diamond composition.",
+  "controls": [
+    {
+      "control": "FMR-001",
+      "baseline": true
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "privileged-operator",
+  "title": "Privileged operator profile",
+  "description": "A profile used by the owner for administration: broad credentials, careful recovery.",
+  "controls": [
+    {
+      "control": "FMR-001",
+      "baseline": false,
+      "note": "Recommended rather than baseline when the operator surface is an interactive CLI on the owner's own account."
+    },
+    {
+      "control": "FMR-002",
+      "baseline": true
+    },
+    {
+      "control": "FMR-007",
+      "baseline": true
+    },
+    {
+      "control": "FMR-013",
+      "baseline": true
+    }
+  ]
+}

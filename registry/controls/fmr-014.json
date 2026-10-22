@@ -1,0 +1,70 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-014",
+  "title": "Single writer per Hermes home",
+  "summary": "No two live agent processes write the same Hermes home at the same time.",
+  "lifecycle": "active",
+  "category": "identity",
+  "protected": {
+    "asset": "The state database and configuration of each Hermes home",
+    "failure": "Concurrent writers corrupt state or silently drop configuration and job changes."
+  },
+  "predicate": {
+    "any_of": [
+      {
+        "fact": "deployment.kind",
+        "op": "equals",
+        "value": "team-runtime"
+      },
+      {
+        "fact": "users.count",
+        "op": "gte",
+        "value": 2
+      }
+    ]
+  },
+  "rationale": "A Hermes home is designed around one writing process. The moment a second service, sidecar or direct editor writes concurrently, state corruption and lost updates stop being edge cases. Shared deployments need an explicit writer-per-home mapping, and any supervised arrangement is accepted as one crash domain with one writer.",
+  "variants": [
+    {
+      "id": "writer-map",
+      "description": "Maintain an explicit map of homes to their single writing process, verified against the running process inventory."
+    },
+    {
+      "id": "standalone-split",
+      "description": "Give profiles that cannot share a crash domain their own standalone service on separate data.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "Compare the live process inventory against the intended writer map: every home has exactly one writing process, and no sidecar starts a second service on the same data.",
+    "evidence": "Writer-map summary and process-count comparison per home; no process arguments or secrets."
+  },
+  "rollback": {
+    "method": "Stop the duplicate writer first, then reconcile any state divergence from backups before resuming."
+  },
+  "failure_modes": [
+    "A debugging sidecar starts a second service on the same data directory.",
+    "Direct edits to live stores race the running writer.",
+    "A crash-domain split is assumed from profile names without a process check."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-09-02",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}
