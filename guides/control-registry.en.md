@@ -32,6 +32,10 @@ Every control in the resolved set receives exactly one status:
 
 Predicates use three-valued logic. An absent or mismatched inventory fact is unknown, not false. Any control that cannot decide becomes `needs_decision` listing the fact path it needed. An incomplete inventory therefore reads as an explicit question list, which is exactly what you want before hardening a real system.
 
+## Version ranges carry an evidence basis
+
+Every range in `hermes_versions.verified` states how it was established in a required `basis` field. `exercised` means the control's behaviour was actually exercised on builds inside the range. `documentation` means the surrounding procedures or official documentation were read against those builds — no behavioural verification is claimed. `illustrative` marks a synthetic placeholder on a synthetic seed control — no compatibility claim at all. The report shows the strongest basis covering your Hermes version as `version_basis` on each control, and adds a disclosure reason whenever an applicable control is in range only on documentation or illustrative evidence. Outside every range the control stays `unsupported`, exactly as before: the basis changes what a pass claims, never whether a gap is hidden. Today no control in this registry carries an exercised range — seed controls are illustrative and the practice controls are documentation-reviewed — so no report asserts exercised platform compatibility for any Hermes version.
+
 ## Determinism contract
 
 Evaluation is a pure function of the registry bytes, the profile ids, the inventory bytes and the as-of date. Reports carry digests of both inputs; the same inputs always yield byte-identical output. Evaluation itself reads no clock, inspects no host state and writes nothing; the CLI writes a report file only when you explicitly pass `--out`.

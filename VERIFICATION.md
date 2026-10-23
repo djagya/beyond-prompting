@@ -1,3 +1,68 @@
+# Verification: version-range evidence basis (registry 0.3.0)
+
+Sanitised verification note for the change that makes the evidence basis of
+every version range explicit. Commands use `$REPO` for the repository
+checkout; run from the repository root. No private paths, identifiers or
+source material are part of this note.
+
+## Tested tree
+
+- Branch: `research/real-world-controls-v1`, on top of the registry 0.2.0
+  candidate.
+- The exact candidate commit is recorded in the pull request; every command
+  below was run against the working tree of that commit.
+
+## What changed
+
+- `version_range` gains a required `basis` field (`exercised` |
+  `documentation` | `illustrative`) declaring how the range was established.
+- Every control migrated to its honest basis: seed controls FMR-001..FMR-014
+  are `illustrative` (synthetic placeholder examples), practice controls
+  FMR-015..FMR-022 are `documentation` (procedures read against builds, as
+  their own notes already stated). No range was narrowed or widened; the
+  claim attached to each range is what changed.
+- Report results carry `version_basis` and, for statuses whose reading
+  depends on in-range membership on a non-exercised basis, an explicit
+  `hermes_version.basis` disclosure reason. No applicability status changed;
+  `unsupported` on out-of-range versions and `needs_decision` on missing
+  versions behave exactly as before. The report document tag is now
+  `beyond-prompting/report@2`.
+- Registry manifest bumped to 0.3.0 with `as_of 2026-10-23`; the example
+  report was regenerated deterministically.
+- This resolves review question 3 from the 0.2.0 note: the wide ranges stay
+  as documentation/illustrative records and no longer imply exercised
+  platform compatibility, instead of being narrowed to a claim that would
+  itself be unverified.
+
+## Commands and results
+
+All of the following were run against the candidate tree; exit code 0 unless
+noted.
+
+```sh
+cd $REPO
+python3 scripts/applicability.py validate-registry
+python3 -m unittest discover -s registry/tests   # 77 tests, OK
+python3 scripts/validate.py                      # repository structural checks, PASS
+python3 scripts/applicability.py evaluate \
+    --profile public-surface \
+    --inventory registry/tests/fixtures/inventories/public-gateway.json \
+    --as-of 2026-10-17
+git diff --check
+```
+
+Determinism: the `evaluate` command above was run twice; both runs produced
+byte-identical reports (also covered by the test suite).
+
+## Honest limits
+
+- The disclosure is about evidence, not new verification: no control was
+  exercised against any Hermes build for this change, and no range claims
+  otherwise.
+- Verification here is local: unit tests, the registry validator, the
+  repository structural validator and CLI determinism. No control was applied
+  to a live deployment.
+
 # Verification: operational-practice controls (registry 0.2.0)
 
 Sanitised verification note for the change that adds the operational-practice

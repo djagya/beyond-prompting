@@ -33,11 +33,15 @@
     "version_range": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["minimum", "maximum"],
-      "description": "Inclusive minimum and maximum Hermes versions in which this control was verified. minimum must not exceed maximum (checked by the registry validator).",
+      "required": ["minimum", "maximum", "basis"],
+      "description": "Inclusive minimum and maximum Hermes versions this control was checked against, with the evidence basis for that check stated explicitly. minimum must not exceed maximum (checked by the registry validator). The basis is part of the claim: a range with basis documentation or illustrative is never presented as exercised verification.",
       "properties": {
         "minimum": {"$ref": "#/$defs/version"},
-        "maximum": {"$ref": "#/$defs/version"}
+        "maximum": {"$ref": "#/$defs/version"},
+        "basis": {
+          "description": "exercised: the control's behaviour was actually exercised on builds inside this range. documentation: the surrounding procedures or official documentation were read against builds in this range; no behavioural verification is claimed. illustrative: a synthetic placeholder range on a synthetic example control; no compatibility claim at all.",
+          "enum": ["exercised", "documentation", "illustrative"]
+        }
       }
     },
     "scalar": {

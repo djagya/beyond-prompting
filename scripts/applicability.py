@@ -494,6 +494,29 @@ def _version_in_ranges(version: str, ranges: list) -> bool:
     return any(_parse_version(r["minimum"]) <= parsed <= _parse_version(r["maximum"]) for r in ranges)
 
 
+# Evidence strength of a range basis: when several ranges contain the target
+# version, the strongest basis among them is the one the report discloses.
+BASIS_STRENGTH = {"illustrative": 1, "documentation": 2, "exercised": 3}
+
+BASIS_DISCLOSURE = {
+    "documentation": ("the strongest evidence for this range is a documentation review "
+                      "(procedures read against these builds); no exercised-behaviour "
+                      "verification is claimed"),
+    "illustrative": ("the strongest evidence for this range is an illustrative placeholder "
+                     "on a synthetic example control; no compatibility is claimed at all"),
+}
+
+
+def _matching_basis(version: str, ranges: list):
+    """Strongest basis among the ranges containing version, or None when outside all."""
+    parsed = _parse_version(version)
+    matching = [r for r in ranges
+                if _parse_version(r["minimum"]) <= parsed <= _parse_version(r["maximum"])]
+    if not matching:
+        return None
+    return max(matching, key=lambda r: BASIS_STRENGTH[r["basis"]])["basis"]
+
+
 def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of: str) -> dict:
     """Evaluate the composed control set of one or more profiles against an inventory.
 
@@ -543,14 +566,14 @@ def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of
         hermes_section = inventory.get("hermes", {})
         if isinstance(hermes_section, dict) and isinstance(hermes_section.get("version"), str):
             version = hermes_section["version"]
-            in_range = _version_in_ranges(version, control["hermes_versions"]["verified"])
-            version_state = "IN_RANGE" if in_range else "OUT_OF_RANGE"
+            basis = _matching_basis(version, control["hermes_versions"]["verified"])
+            version_state = "IN_RANGE" if basis is not None else "OUT_OF_RANGE"
         else:
-            version, version_state = None, "MISSING"
+            version, basis, version_state = None, None, "MISSING"
         lv_date = _parse_date(control["last_verification"]["date"])
         stale = (as_of_date - lv_date).days > max_age
         dimensions[cid] = {"verdict": verdict, "issues": issues, "version": version,
-                           "version_state": version_state, "stale": stale}
+                           "version_state": version_state, "basis": basis, "stale": stale}
 
     # Pass 2: conflicts fire only when both sides evaluate predicate-true.
     conflicts = {cid: [] for cid in control_ids}
@@ -567,13 +590,31 @@ def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of
         control = loaded.controls[cid]
         dim = dimensions[cid]
         slot = merged[cid]
+        if dim["version_state"] == "MISSING":
+            version_basis = "unknown"
+        elif dim["version_state"] == "OUT_OF_RANGE":
+            version_basis = "out_of_range"
+        else:
+            version_basis = dim["basis"]
         result = {
             "control": cid,
             "title": control["title"],
             "baseline": slot["baseline"],
             "profiles": sorted(slot["profiles"]),
+            "version_basis": version_basis,
             "reasons": [],
         }
+
+        def basis_reason():
+            # In-range membership on a non-exercised basis is disclosed, never
+            # presented as exercised verification. Only added to statuses whose
+            # reading depends on the version being in range.
+            if dim["version_state"] == "IN_RANGE" and dim["basis"] != "exercised":
+                return {"source": "hermes_version.basis",
+                        "detail": (f"hermes version {dim['version']} is in range for this control, but "
+                                   + BASIS_DISCLOSURE[dim["basis"]])}
+            return None
+
         if dim["verdict"] is False:
             result["status"] = "not_applicable"
             result["reasons"].append({
@@ -608,6 +649,9 @@ def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of
                               "; both designs apply and the operator must choose one"})
                 result["conflicts_with"] = sorted(conflicts[cid])
             if decision_reasons:
+                disclosure = basis_reason()
+                if disclosure is not None:
+                    decision_reasons.append(disclosure)
                 result["status"] = "needs_decision"
                 result["reasons"] = decision_reasons
             else:
@@ -619,6 +663,9 @@ def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of
                                if slot["baseline"] else
                                "meaningful risk reduction; operator choice remains in profile(s): "
                                + ", ".join(sorted(slot["profiles"])))})
+                disclosure = basis_reason()
+                if disclosure is not None:
+                    result["reasons"].append(disclosure)
         results.append(result)
 
     summary = {status: 0 for status in STATUS_VALUES}
@@ -627,7 +674,7 @@ def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of
     summary["total"] = len(results)
 
     report = {
-        "schema": "beyond-prompting/report@1",
+        "schema": "beyond-prompting/report@2",
         "registry_version": loaded.manifest["registry_version"],
         "registry_as_of": loaded.manifest["as_of"],
         "as_of": as_of,

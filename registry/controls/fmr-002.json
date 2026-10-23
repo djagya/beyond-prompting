@@ -42,13 +42,15 @@
     "verified": [
       {
         "minimum": "0.5.0",
-        "maximum": "1.2.0"
+        "maximum": "1.2.0",
+        "basis": "illustrative"
       }
-    ]
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
   },
   "last_verification": {
-    "date": "2026-09-10",
-    "registry_version": "0.1.0"
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
   },
   "provenance": {
     "origin": "original",

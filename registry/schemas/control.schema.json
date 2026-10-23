@@ -117,7 +117,7 @@
       "items": {"type": "string", "minLength": 1, "maxLength": 500}
     },
     "hermes_versions": {
-      "description": "Verified version ranges only. A target Hermes version outside every range evaluates to unsupported, never to a silent pass.",
+      "description": "Version ranges the control was checked against, each carrying an explicit evidence basis. A range with basis exercised records actual behavioural verification; documentation records that procedures or official docs were read against those builds; illustrative marks a synthetic placeholder with no compatibility claim. A target Hermes version outside every range evaluates to unsupported, never to a silent pass; an in-range version whose strongest basis is not exercised is disclosed in the report, never presented as exercised verification.",
       "type": "object",
       "additionalProperties": false,
       "required": ["verified"],

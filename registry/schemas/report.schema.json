@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schema", "registry_version", "registry_as_of", "as_of", "profiles", "inventory_digest", "registry_digest", "policy", "resolution", "results", "summary"],
   "properties": {
-    "schema": {"const": "beyond-prompting/report@1"},
+    "schema": {"const": "beyond-prompting/report@2"},
     "registry_version": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/version"},
     "registry_as_of": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/date"},
     "as_of": {
@@ -63,7 +63,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["control", "title", "status", "baseline", "profiles", "reasons"],
+        "required": ["control", "title", "status", "baseline", "profiles", "version_basis", "reasons"],
         "properties": {
           "control": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"},
           "title": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/short_string"},
@@ -74,6 +74,10 @@
             "minItems": 1,
             "uniqueItems": true,
             "items": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/profile_id"}
+          },
+          "version_basis": {
+            "description": "Strongest evidence basis among the control's ranges containing the inventory Hermes version; out_of_range when the version is outside every range, unknown when the inventory omits the version. An in-range basis of documentation or illustrative is a disclosure, not exercised verification.",
+            "enum": ["exercised", "documentation", "illustrative", "out_of_range", "unknown"]
           },
           "conflicts_with": {
             "type": "array",
@@ -89,7 +93,7 @@
               "additionalProperties": false,
               "required": ["source", "detail"],
               "properties": {
-                "source": {"enum": ["predicate.false", "predicate.fact_missing", "hermes_version.range", "verification.stale", "conflict.control", "profile.baseline", "profile.discretion"]},
+                "source": {"enum": ["predicate.false", "predicate.fact_missing", "hermes_version.range", "hermes_version.basis", "verification.stale", "conflict.control", "profile.baseline", "profile.discretion"]},
                 "detail": {"type": "string", "minLength": 1, "maxLength": 500}
               }
             }

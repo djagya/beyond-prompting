@@ -10,12 +10,12 @@
   "profiles": [
     "public-surface"
   ],
-  "registry_as_of": "2026-10-22",
+  "registry_as_of": "2026-10-23",
   "registry_digest": {
     "algorithm": "sha256",
-    "value": "144d8d1eb5c8615e35a9866d997642583b2df401d44bf477fdc5be48c461bb7b"
+    "value": "239564b00864de85c6db1d0b359c6f8d96fd8633a4620491dcd9a2daa5b83a5e"
   },
-  "registry_version": "0.2.0",
+  "registry_version": "0.3.0",
   "resolution": [],
   "results": [
     {
@@ -28,10 +28,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Gateway service runs under a non-root identity"
+      "title": "Gateway service runs under a non-root identity",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -43,10 +48,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Secret redaction is enabled in every Hermes home"
+      "title": "Secret redaction is enabled in every Hermes home",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -58,10 +68,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Exposed dashboards and APIs require authentication"
+      "title": "Exposed dashboards and APIs require authentication",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -73,10 +88,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Approval policy fails closed across session modes"
+      "title": "Approval policy fails closed across session modes",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -91,10 +111,15 @@
         {
           "detail": "conflicts with FMR-011; both designs apply and the operator must choose one",
           "source": "conflict.control"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "needs_decision",
-      "title": "Egress limited to an allowlisted inspecting proxy"
+      "title": "Egress limited to an allowlisted inspecting proxy",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -109,10 +134,15 @@
         {
           "detail": "conflicts with FMR-010; both designs apply and the operator must choose one",
           "source": "conflict.control"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "needs_decision",
-      "title": "Direct egress restricted to pinned endpoints"
+      "title": "Direct egress restricted to pinned endpoints",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -124,10 +154,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Durable delivery ledger for outbound messages"
+      "title": "Durable delivery ledger for outbound messages",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -139,10 +174,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): public-surface",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is an illustrative placeholder on a synthetic example control; no compatibility is claimed at all",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Scheduled supply-chain audit"
+      "title": "Scheduled supply-chain audit",
+      "version_basis": "illustrative"
     },
     {
       "baseline": true,
@@ -154,10 +194,15 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is a documentation review (procedures read against these builds); no exercised-behaviour verification is claimed",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Outbound delivery is confirmed by receipt readback"
+      "title": "Outbound delivery is confirmed by receipt readback",
+      "version_basis": "documentation"
     },
     {
       "baseline": true,
@@ -169,13 +214,18 @@
         {
           "detail": "omission violates the declared baseline of profile(s): messaging-gateway",
           "source": "profile.baseline"
+        },
+        {
+          "detail": "hermes version 1.1.0 is in range for this control, but the strongest evidence for this range is a documentation review (procedures read against these builds); no exercised-behaviour verification is claimed",
+          "source": "hermes_version.basis"
         }
       ],
       "status": "required",
-      "title": "Retained untrusted content is data, never a mandate"
+      "title": "Retained untrusted content is data, never a mandate",
+      "version_basis": "documentation"
     }
   ],
-  "schema": "beyond-prompting/report@1",
+  "schema": "beyond-prompting/report@2",
   "summary": {
     "needs_decision": 2,
     "not_applicable": 0,

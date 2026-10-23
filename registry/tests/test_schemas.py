@@ -67,6 +67,7 @@ class NegativeControlSchemas(unittest.TestCase):
         "control-schema-bad-lifecycle.json",
         "control-schema-underspecified-predicate.json",
         "control-schema-bad-predicate-op.json",
+        "control-schema-range-missing-basis.json",
     ]
 
     def test_under_specified_controls_fail_schema(self):

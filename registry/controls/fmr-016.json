@@ -44,14 +44,15 @@
     "verified": [
       {
         "minimum": "0.6.0",
-        "maximum": "1.2.0"
+        "maximum": "1.2.0",
+        "basis": "documentation"
       }
     ],
     "notes": "Operational practice control: the range records the builds whose messaging delivery surfaces the procedure was read against, not a versioned platform feature."
   },
   "last_verification": {
-    "date": "2026-10-22",
-    "registry_version": "0.2.0",
+    "date": "2026-10-23",
+    "registry_version": "0.3.0",
     "notes": "General operational synthesis from recorded practice with private detail removed; the cited API documents a receipt surface, not an incident."
   },
   "provenance": {

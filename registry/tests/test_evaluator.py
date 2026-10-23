@@ -289,6 +289,79 @@ class PredicateLogic(unittest.TestCase):
         self.assertIs(verdict, True)
 
 
+class VersionBasis(unittest.TestCase):
+    """The report must disclose the evidence basis of version-range membership and
+    never present documentation review or illustrative placeholders as exercised
+    verification — without changing any applicability status."""
+
+    def test_illustrative_basis_is_disclosed_on_required(self):
+        report = evaluate(["public-surface"], load_inventory("public-gateway.json"))
+        fmr_001 = status_map(report)["FMR-001"]
+        self.assertEqual(fmr_001["status"], "required")
+        self.assertEqual(fmr_001["version_basis"], "illustrative")
+        sources = {r["source"] for r in fmr_001["reasons"]}
+        self.assertEqual(sources, {"profile.baseline", "hermes_version.basis"})
+        detail = " ".join(r["detail"] for r in fmr_001["reasons"])
+        self.assertIn("illustrative placeholder", detail)
+
+    def test_documentation_basis_is_disclosed_without_status_change(self):
+        report = evaluate(["private-server"], load_inventory("operator-console-unattended.json"))
+        fmr_015 = status_map(report)["FMR-015"]
+        self.assertEqual(fmr_015["status"], "required")
+        self.assertEqual(fmr_015["version_basis"], "documentation")
+        sources = {r["source"] for r in fmr_015["reasons"]}
+        self.assertEqual(sources, {"profile.baseline", "hermes_version.basis"})
+        detail = " ".join(r["detail"] for r in fmr_015["reasons"])
+        self.assertIn("documentation review", detail)
+
+    def test_unsupported_and_not_applicable_carry_no_basis_reason(self):
+        report = evaluate(["private-server"], load_inventory("old-version-server.json"))
+        by_id = status_map(report)
+        fmr_003 = by_id["FMR-003"]
+        self.assertEqual(fmr_003["status"], "unsupported")
+        self.assertEqual(fmr_003["version_basis"], "out_of_range")
+        self.assertEqual({r["source"] for r in fmr_003["reasons"]}, {"hermes_version.range"})
+        # Predicate-false keeps its exact single reason.
+        ws = evaluate(["private-server"], load_inventory("workstation-minimal.json"))
+        fmr_003_na = status_map(ws)["FMR-003"]
+        self.assertEqual(fmr_003_na["status"], "not_applicable")
+        self.assertEqual({r["source"] for r in fmr_003_na["reasons"]}, {"predicate.false"})
+
+    def test_missing_version_is_unknown_basis_without_disclosure(self):
+        inventory = {"schema": "beyond-prompting/inventory@1",
+                     "deployment": {"kind": "workstation", "exposure": "loopback",
+                                    "unattended_jobs": False, "owner_model": "individual"}}
+        report = evaluate(["workstation"], inventory)
+        fmr_007 = status_map(report)["FMR-007"]
+        self.assertEqual(fmr_007["status"], "needs_decision")
+        self.assertEqual(fmr_007["version_basis"], "unknown")
+        self.assertNotIn("hermes_version.basis", {r["source"] for r in fmr_007["reasons"]})
+
+    def test_strongest_matching_basis_wins(self):
+        with fixture_registry() as target:
+            path = target / "controls" / "fmr-001.json"
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            doc["hermes_versions"]["verified"] = [
+                {"minimum": "0.6.0", "maximum": "1.2.0", "basis": "illustrative"},
+                {"minimum": "1.1.0", "maximum": "1.1.0", "basis": "exercised"},
+            ]
+            path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+            loaded = applicability.load_registry(target)
+            # Version inside the exercised range: no disclosure at all.
+            inventory = load_inventory("public-gateway.json")
+            inventory["hermes"]["version"] = "1.1.0"
+            report = applicability.evaluate(loaded, ["public-surface"], inventory, AS_OF)
+            fmr_001 = status_map(report)["FMR-001"]
+            self.assertEqual(fmr_001["version_basis"], "exercised")
+            self.assertEqual({r["source"] for r in fmr_001["reasons"]}, {"profile.baseline"})
+            # Version inside only the illustrative range: disclosure returns.
+            inventory["hermes"]["version"] = "1.0.0"
+            report = applicability.evaluate(loaded, ["public-surface"], inventory, AS_OF)
+            fmr_001 = status_map(report)["FMR-001"]
+            self.assertEqual(fmr_001["version_basis"], "illustrative")
+            self.assertIn("hermes_version.basis", {r["source"] for r in fmr_001["reasons"]})
+
+
 class PracticeControls(unittest.TestCase):
     """Positive and negative fixtures for the operational-practice controls FMR-015..FMR-022."""
 

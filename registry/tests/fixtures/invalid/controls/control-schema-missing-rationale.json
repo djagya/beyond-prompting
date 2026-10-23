@@ -35,7 +35,8 @@
     "verified": [
       {
         "minimum": "0.8.0",
-        "maximum": "1.2.0"
+        "maximum": "1.2.0",
+        "basis": "illustrative"
       }
     ]
   },

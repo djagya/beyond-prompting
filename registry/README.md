@@ -21,7 +21,7 @@ registry/
 
 | Kind | Schema | Purpose |
 | --- | --- | --- |
-| Control | `schemas/control.schema.json` | One hardening measure: what it protects, when it applies (predicate), variants, verification, rollback, failure modes, verified version ranges, conflict and supersession links. |
+| Control | `schemas/control.schema.json` | One hardening measure: what it protects, when it applies (predicate), variants, verification, rollback, failure modes, version ranges with an explicit evidence basis, conflict and supersession links. |
 | Profile | `schemas/profile.schema.json` | A named set of control references with a baseline disposition per reference. Profiles extend other profiles; they never copy control bodies. |
 | Inventory | `schemas/inventory.json` | Closed-world facts about one deployment. No free text, no secrets, no identifiers beyond the schema. |
 | Report | `schemas/report.schema.json` | Output of the evaluator: per-control status, reasons, digests, resolution trail. |
@@ -56,6 +56,29 @@ missing or type-mismatched inventory fact is unknown, never false. Any
 control whose predicate cannot decide yields `needs_decision` and names the
 facts it needed. A deployment that omits facts therefore surfaces as an
 explicit decision list, not as an accidentally clean report.
+
+## Version range evidence basis
+
+Every range in a control's `hermes_versions.verified` carries a required
+`basis` declaring how the range was established:
+
+- `exercised` — the control's behaviour was actually exercised on builds
+  inside the range.
+- `documentation` — the surrounding procedures or official documentation
+  were read against those builds; no behavioural verification is claimed.
+- `illustrative` — a synthetic placeholder on a synthetic seed control; no
+  compatibility claim at all.
+
+Each report result records `version_basis`: the strongest basis among the
+ranges containing the inventory's Hermes version (`out_of_range` outside
+every range, `unknown` when the inventory omits the version). A result whose
+applicability reading depends on in-range membership on a documentation or
+illustrative basis carries an explicit `hermes_version.basis` disclosure
+reason; the disclosure never changes a status, and `unsupported` on an
+out-of-range version behaves exactly as before. At registry 0.3.0 no control
+carries an exercised range — seed controls are illustrative, practice
+controls are documentation-reviewed — so no report from this registry
+asserts exercised platform compatibility for any Hermes version.
 
 ## Determinism contract
 
