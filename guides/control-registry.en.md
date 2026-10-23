@@ -50,11 +50,15 @@ python3 scripts/applicability.py evaluate \
     --as-of 2026-10-17
 ```
 
-Repeat `--profile` to union several profiles. Exit code 0 means a report was produced; 1 means the registry or inventory failed validation; 2 is a usage error. Validate the registry itself before trusting any report from it.
+Repeat `--profile` to union several profiles. `--format markdown` exports the same report as deterministic, escaped Markdown instead of JSON. Exit code 0 means a report was produced; 1 means the registry or inventory failed validation; 2 is a usage error. Validate the registry itself before trusting any report from it. JSON inputs are read under explicit limits: a size cap, rejection of duplicate object keys (contradictory facts fail instead of last-wins) and rejection of malformed or pathologically nested documents.
 
 ## Reading a report
 
 Start with the summary counts, then read `needs_decision` entries first — they carry the facts you must supply or confirm. Check `resolution` when a profile references a deprecated control: the entry names the successor that was evaluated instead. `registry_digest` and `inventory_digest` let you pin a report to the exact inputs it was made from.
+
+## Comparing reports
+
+`compare report-a.json report-b.json` (with `--format markdown` for a readable export) diffs two reports against each other, binding the comparison to their recorded context. Both inputs are validated against the report schema. The output shows, per context field — registry version and digest, inventory digest, profiles, as-of, freshness policy — whether the two reports were made from the same inputs, then lists per-control status and version-basis transitions with the reasons added and removed. When any context field differs, the result says `same_context: false` with an explicit warning: differences between mismatched inputs reflect the changed inputs and are not, by themselves, evidence of a security regression.
 
 ## Recording evidence
 

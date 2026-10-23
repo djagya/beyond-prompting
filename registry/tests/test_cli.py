@@ -111,5 +111,160 @@ class FailurePaths(unittest.TestCase):
             self.assertTrue(any(e["code"] == "REG-VERIFICATION-STALE" for e in result["errors"]))
 
 
+class ExportFormat(unittest.TestCase):
+    def test_markdown_export_is_deterministic_and_complete(self):
+        argv = ("evaluate", "--profile", "public-surface",
+                "--inventory", INVENTORY, "--as-of", "2026-10-17", "--format", "markdown")
+        first = run_cli(*argv)
+        second = run_cli(*argv)
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertEqual(first.stdout, second.stdout)
+        text = first.stdout
+        self.assertIn("# Applicability report", text)
+        self.assertIn("## Summary", text)
+        self.assertIn("| required | 8 |", text)
+        self.assertIn("## needs_decision (2)", text)
+        self.assertIn("version basis: illustrative", text)
+        self.assertIn("`hermes_version.basis`", text)
+
+    def test_markdown_out_file_matches_stdout(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            out = Path(tmp) / "report.md"
+            proc = run_cli("evaluate", "--profile", "public-surface",
+                           "--inventory", INVENTORY, "--as-of", "2026-10-17",
+                           "--format", "markdown", "--out", str(out))
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertEqual(out.read_text(encoding="utf-8"), proc.stdout)
+
+    def test_markdown_escapes_special_characters(self):
+        from helpers import applicability
+        loaded_report = json.loads(run_cli("evaluate", "--profile", "public-surface",
+                                           "--inventory", INVENTORY,
+                                           "--as-of", "2026-10-17").stdout)
+        loaded_report["results"][0]["title"] = "a|b`c*d_e[f]g\\h"
+        text = applicability.render_report_markdown(loaded_report)
+        self.assertIn(r"a\|b\`c\*d\_e\[f\]g\\h", text)
+
+    def test_json_export_is_byte_stable(self):
+        argv = ("evaluate", "--profile", "public-surface",
+                "--inventory", INVENTORY, "--as-of", "2026-10-17")
+        self.assertEqual(run_cli(*argv).stdout, run_cli(*argv).stdout)
+
+
+class CompareCommand(unittest.TestCase):
+    def _report(self, directory, name, as_of):
+        out = Path(directory) / name
+        proc = run_cli("evaluate", "--profile", "public-surface",
+                       "--inventory", INVENTORY, "--as-of", as_of, "--out", str(out))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        return str(out)
+
+    def test_identical_reports_same_context_no_changes(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            a = self._report(tmp, "a.json", "2026-10-17")
+            proc = run_cli("compare", a, a)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            diff = json.loads(proc.stdout)
+            self.assertTrue(diff["same_context"])
+            self.assertEqual(diff["changes"], [])
+            self.assertNotIn("warning", diff)
+            self.assertEqual(diff["summary"]["unchanged"], diff["summary"]["total_controls"])
+
+    def test_different_as_of_is_context_bound_with_warning(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            a = self._report(tmp, "a.json", "2026-10-17")
+            b = self._report(tmp, "b.json", "2027-12-01")
+            proc = run_cli("compare", a, b)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            diff = json.loads(proc.stdout)
+            self.assertFalse(diff["same_context"])
+            self.assertFalse(diff["context"]["as_of"]["equal"])
+            self.assertTrue(diff["context"]["registry_digest"]["equal"])
+            self.assertIn("not, by themselves", diff["warning"])
+            modified = [c for c in diff["changes"] if c["change"] == "modified"]
+            transitions = {(e["status"]["from"], e["status"]["to"]) for e in modified}
+            # The eight decided controls go stale; the two conflicted controls
+            # were already needs_decision and only gain the stale reason.
+            self.assertEqual(transitions, {("required", "needs_decision"),
+                                           ("needs_decision", "needs_decision")})
+            for entry in modified:
+                added_sources = {r["source"] for r in entry["reasons_added"]}
+                self.assertIn("verification.stale", added_sources)
+
+    def test_compare_markdown_and_determinism(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            a = self._report(tmp, "a.json", "2026-10-17")
+            b = self._report(tmp, "b.json", "2027-12-01")
+            first = run_cli("compare", a, b, "--format", "markdown")
+            second = run_cli("compare", a, b, "--format", "markdown")
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            self.assertEqual(first.stdout, second.stdout)
+            self.assertIn("# Applicability report comparison", first.stdout)
+            self.assertIn("## Input context", first.stdout)
+            self.assertIn("**Warning:**", first.stdout)
+            self.assertIn("| as_of | 2026-10-17 | 2027-12-01 | no |", first.stdout)
+
+    def test_malformed_report_exits_one(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            bad = Path(tmp) / "bad.json"
+            bad.write_text("not json", encoding="utf-8")
+            good = self._report(tmp, "good.json", "2026-10-17")
+            proc = run_cli("compare", str(bad), good)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("REPORT-LOAD", proc.stdout)
+
+    def test_schema_violating_report_exits_one(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            good = self._report(tmp, "good.json", "2026-10-17")
+            bogus = Path(tmp) / "bogus.json"
+            doc = json.loads(Path(good).read_text(encoding="utf-8"))
+            doc["results"][0]["status"] = "bogus-status"
+            bogus.write_text(json.dumps(doc), encoding="utf-8")
+            proc = run_cli("compare", str(bogus), good)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("REPORT-SCHEMA", proc.stdout)
+
+    def test_missing_report_file_exits_one(self):
+        proc = run_cli("compare", "/nonexistent/a.json", "/nonexistent/b.json")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("REPORT-LOAD", proc.stdout)
+
+
+class InputHardening(unittest.TestCase):
+    def test_duplicate_keys_are_rejected_as_contradictory(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            bad = Path(tmp) / "dup.json"
+            bad.write_text(
+                '{"schema": "beyond-prompting/inventory@1",'
+                ' "deployment": {"kind": "workstation", "exposure": "loopback",'
+                ' "unattended_jobs": true, "owner_model": "individual"},'
+                ' "deployment": {"kind": "workstation", "exposure": "loopback",'
+                ' "unattended_jobs": false, "owner_model": "individual"}}',
+                encoding="utf-8")
+            proc = run_cli("evaluate", "--profile", "workstation",
+                           "--inventory", str(bad), "--as-of", "2026-10-17")
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("duplicate key", proc.stdout)
+
+    def test_oversized_inventory_is_rejected(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            big = Path(tmp) / "big.json"
+            big.write_text('{"schema": "beyond-prompting/inventory@1", "pad": "'
+                           + "x" * (5 * 1024 * 1024) + '"}', encoding="utf-8")
+            proc = run_cli("evaluate", "--profile", "workstation",
+                           "--inventory", str(big), "--as-of", "2026-10-17")
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("limit", proc.stdout)
+
+    def test_pathological_nesting_is_rejected(self):
+        with tempfile.TemporaryDirectory(prefix="fmr-cli-") as tmp:
+            deep = Path(tmp) / "deep.json"
+            deep.write_text("[" * 100000 + "]" * 100000, encoding="utf-8")
+            proc = run_cli("evaluate", "--profile", "workstation",
+                           "--inventory", str(deep), "--as-of", "2026-10-17")
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("nested too deeply", proc.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

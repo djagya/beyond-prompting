@@ -693,6 +693,238 @@ def evaluate(loaded: LoadedRegistry, profile_slugs: list, inventory: dict, as_of
 
 
 # ---------------------------------------------------------------------------
+# Hardened JSON input loading
+# ---------------------------------------------------------------------------
+
+MAX_INPUT_BYTES = 4 * 1024 * 1024
+
+
+def _reject_duplicate_keys(pairs):
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate key {key!r}: contradictory facts must be resolved by the author, not by last-wins parsing")
+        obj[key] = value
+    return obj
+
+
+def load_json_file(path, code: str):
+    """Read and parse one JSON input document under explicit limits.
+
+    Rejects unreadable files, documents over MAX_INPUT_BYTES, invalid UTF-8,
+    malformed or pathologically nested JSON, and duplicate object keys: two
+    contradictory values for the same fact are an input error, never a silent
+    last-wins choice.
+    """
+    p = Path(path)
+    try:
+        raw = p.read_bytes()
+    except OSError as exc:
+        raise RegistryError(f"{code}: cannot read {p}: {exc}") from exc
+    if len(raw) > MAX_INPUT_BYTES:
+        raise RegistryError(f"{code}: {p} is {len(raw)} bytes; the limit is {MAX_INPUT_BYTES}")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RegistryError(f"{code}: {p} is not valid UTF-8: {exc}") from exc
+    try:
+        return json.loads(text, object_pairs_hook=_reject_duplicate_keys)
+    except json.JSONDecodeError as exc:
+        raise RegistryError(f"{code}: {p} is not valid JSON: {exc}") from exc
+    except RecursionError as exc:
+        raise RegistryError(f"{code}: {p} is nested too deeply to parse safely") from exc
+    except ValueError as exc:
+        raise RegistryError(f"{code}: {p}: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# Markdown rendering (deterministic, escaped)
+# ---------------------------------------------------------------------------
+
+def _md_escape(text) -> str:
+    out = str(text)
+    for char in ("\\", "|", "`", "*", "_", "[", "]"):
+        out = out.replace(char, "\\" + char)
+    return out.replace("\r", " ").replace("\n", " ")
+
+
+def render_report_markdown(report: dict) -> str:
+    lines = [
+        "# Applicability report",
+        "",
+        f"- Registry version: `{report['registry_version']}` (as of {report['registry_as_of']})",
+        f"- Evaluation as-of: {report['as_of']}",
+        f"- Profiles: {', '.join(report['profiles'])}",
+        f"- Registry digest: `{report['registry_digest']['value']}`",
+        f"- Inventory digest: `{report['inventory_digest']['value']}`",
+        "",
+        "## Summary",
+        "",
+        "| Status | Count |",
+        "| --- | --- |",
+    ]
+    for status in STATUS_VALUES:
+        lines.append(f"| {status} | {report['summary'][status]} |")
+    lines.append(f"| total | {report['summary']['total']} |")
+    if report["resolution"]:
+        lines += ["", "## Supersession resolutions", "",
+                  "| Profile | Requested | Resolved to |", "| --- | --- | --- |"]
+        for entry in report["resolution"]:
+            lines.append(f"| {entry['profile']} | {entry['requested']} | {entry['resolved_to']} |")
+    by_status = {status: [] for status in STATUS_VALUES}
+    for result in report["results"]:
+        by_status[result["status"]].append(result)
+    for status in ("needs_decision", "unsupported", "required", "recommended", "not_applicable"):
+        group = by_status[status]
+        if not group:
+            continue
+        lines += ["", f"## {status} ({len(group)})"]
+        for result in sorted(group, key=lambda r: r["control"]):
+            lines += ["", f"### {result['control']} — {_md_escape(result['title'])}", ""]
+            lines.append(f"- Profiles: {', '.join(result['profiles'])}; "
+                         f"baseline: {'yes' if result['baseline'] else 'no'}; "
+                         f"version basis: {result['version_basis']}")
+            if result.get("conflicts_with"):
+                lines.append(f"- Conflicts with: {', '.join(result['conflicts_with'])}")
+            lines.append("- Reasons:")
+            for reason in result["reasons"]:
+                lines.append(f"  - `{reason['source']}`: {_md_escape(reason['detail'])}")
+    return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Report comparison (context-bound)
+# ---------------------------------------------------------------------------
+
+def _reason_set(result: dict) -> set:
+    return {(r["source"], r["detail"]) for r in result["reasons"]}
+
+
+def compare_reports(report_a: dict, report_b: dict) -> dict:
+    """Diff two reports, binding the comparison to their recorded input context.
+
+    The delta covers per-control status/version-basis transitions and reason
+    additions/removals. When any recorded context field (registry version or
+    digest, inventory digest, profiles, as-of, freshness policy) differs, the
+    comparison is marked same_context=False with an explicit warning: status
+    differences between mismatched inputs are not, by themselves, evidence of
+    a security regression.
+    """
+    context = {}
+    same = True
+
+    def bind(field, value_a, value_b):
+        nonlocal same
+        equal = value_a == value_b
+        same = same and equal
+        context[field] = {"a": value_a, "b": value_b, "equal": equal}
+
+    for field in ("registry_version", "registry_as_of", "as_of"):
+        bind(field, report_a[field], report_b[field])
+    bind("profiles", sorted(report_a["profiles"]), sorted(report_b["profiles"]))
+    for field in ("inventory_digest", "registry_digest"):
+        bind(field, report_a[field]["value"], report_b[field]["value"])
+    bind("max_verification_age_days",
+         report_a["policy"]["max_verification_age_days"],
+         report_b["policy"]["max_verification_age_days"])
+
+    map_a = {r["control"]: r for r in report_a["results"]}
+    map_b = {r["control"]: r for r in report_b["results"]}
+    changes = []
+    unchanged = 0
+    counts = {"modified": 0, "added": 0, "removed": 0}
+    for cid in sorted(set(map_a) | set(map_b)):
+        ra, rb = map_a.get(cid), map_b.get(cid)
+        if ra is None:
+            assert rb is not None  # cid came from map_b
+            counts["added"] += 1
+            changes.append({"control": cid, "change": "added",
+                            "status": {"from": None, "to": rb["status"]},
+                            "version_basis": {"from": None, "to": rb["version_basis"]},
+                            "reasons_added": [{"source": s, "detail": d}
+                                              for s, d in sorted(_reason_set(rb))],
+                            "reasons_removed": []})
+        elif rb is None:
+            assert ra is not None  # cid came from map_a
+            counts["removed"] += 1
+            changes.append({"control": cid, "change": "removed",
+                            "status": {"from": ra["status"], "to": None},
+                            "version_basis": {"from": ra["version_basis"], "to": None},
+                            "reasons_added": [],
+                            "reasons_removed": [{"source": s, "detail": d}
+                                                for s, d in sorted(_reason_set(ra))]})
+        else:
+            reasons_a, reasons_b = _reason_set(ra), _reason_set(rb)
+            if (ra["status"] == rb["status"]
+                    and ra["version_basis"] == rb["version_basis"]
+                    and reasons_a == reasons_b):
+                unchanged += 1
+                continue
+            counts["modified"] += 1
+            changes.append({"control": cid, "change": "modified",
+                            "status": {"from": ra["status"], "to": rb["status"]},
+                            "version_basis": {"from": ra["version_basis"], "to": rb["version_basis"]},
+                            "reasons_added": [{"source": s, "detail": d}
+                                              for s, d in sorted(reasons_b - reasons_a)],
+                            "reasons_removed": [{"source": s, "detail": d}
+                                                for s, d in sorted(reasons_a - reasons_b)]})
+    diff = {
+        "schema": "beyond-prompting/report-diff@1",
+        "same_context": same,
+        "context": context,
+        "changes": changes,
+        "summary": {"unchanged": unchanged, **counts,
+                    "total_controls": unchanged + counts["modified"] + counts["added"] + counts["removed"]},
+    }
+    if not same:
+        diff["warning"] = ("input contexts differ between the two reports; status differences "
+                           "reflect changed inputs and are not, by themselves, evidence of a "
+                           "security regression")
+    return diff
+
+
+def render_diff_markdown(diff: dict) -> str:
+    def fmt(value):
+        if value is None:
+            return "—"
+        if isinstance(value, list):
+            return _md_escape(", ".join(value))
+        return _md_escape(value)
+
+    lines = ["# Applicability report comparison", "",
+             "## Input context", "",
+             "| Field | Report A | Report B | Equal |", "| --- | --- | --- | --- |"]
+    for field in sorted(diff["context"]):
+        cell = diff["context"][field]
+        lines.append(f"| {field} | {fmt(cell['a'])} | {fmt(cell['b'])} | "
+                     f"{'yes' if cell['equal'] else 'no'} |")
+    if not diff["same_context"]:
+        lines += ["", f"**Warning:** {_md_escape(diff['warning'])}"]
+    lines += ["", "## Changes", ""]
+    if not diff["changes"]:
+        lines.append("No differences in the compared control sets.")
+    else:
+        lines += ["| Control | Change | Status A | Status B | Basis A | Basis B |",
+                  "| --- | --- | --- | --- | --- | --- |"]
+        for entry in diff["changes"]:
+            lines.append(f"| {entry['control']} | {entry['change']} | "
+                         f"{fmt(entry['status']['from'])} | {fmt(entry['status']['to'])} | "
+                         f"{fmt(entry['version_basis']['from'])} | {fmt(entry['version_basis']['to'])} |")
+        for entry in diff["changes"]:
+            if not entry["reasons_added"] and not entry["reasons_removed"]:
+                continue
+            lines += ["", f"### {entry['control']} reason delta"]
+            for reason in entry["reasons_added"]:
+                lines.append(f"- added `{reason['source']}`: {_md_escape(reason['detail'])}")
+            for reason in entry["reasons_removed"]:
+                lines.append(f"- removed `{reason['source']}`: {_md_escape(reason['detail'])}")
+    lines += ["", "## Summary", ""]
+    for key in ("unchanged", "modified", "added", "removed", "total_controls"):
+        lines.append(f"- {key}: {diff['summary'][key]}")
+    return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -714,7 +946,16 @@ def main(argv=None) -> int:
     ev.add_argument("--inventory", required=True, help="path to a metadata-safe inventory JSON file")
     ev.add_argument("--as-of", required=True, metavar="YYYY-MM-DD",
                     help="evaluation date; staleness is judged against it")
+    ev.add_argument("--format", choices=("json", "markdown"), default="json",
+                    help="report export format (default: json)")
     ev.add_argument("--out", help="optional path to write the report to")
+
+    cmp_parser = sub.add_parser("compare", help="compare two reports with input-context binding")
+    cmp_parser.add_argument("report_a", help="path to the first report JSON file")
+    cmp_parser.add_argument("report_b", help="path to the second report JSON file")
+    cmp_parser.add_argument("--format", choices=("json", "markdown"), default="json",
+                            help="comparison export format (default: json)")
+    cmp_parser.add_argument("--out", help="optional path to write the comparison to")
 
     args = parser.parse_args(argv)
     registry_dir = Path(args.registry)
@@ -729,9 +970,31 @@ def main(argv=None) -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["status"] == "PASS" else 1
 
+    if args.command == "compare":
+        try:
+            report_a = load_json_file(args.report_a, "REPORT-LOAD")
+            report_b = load_json_file(args.report_b, "REPORT-LOAD")
+        except RegistryError as exc:
+            return _fail([{"code": "REPORT-LOAD", "detail": str(exc)}])
+        schema_problems = []
+        for label, doc in (("report_a", report_a), ("report_b", report_b)):
+            for msg in schema_errors(loaded.schema_validators["report"], doc):
+                schema_problems.append(f"{label}: {msg}")
+        if schema_problems:
+            return _fail([{"code": "REPORT-SCHEMA", "detail": "; ".join(schema_problems[:5])}])
+        diff = compare_reports(report_a, report_b)
+        if args.format == "markdown":
+            text = render_diff_markdown(diff)
+        else:
+            text = json.dumps(diff, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+        print(text, end="")
+        return 0
+
     try:
-        inventory = json.loads(Path(args.inventory).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        inventory = load_json_file(args.inventory, "INVENTORY-LOAD")
+    except RegistryError as exc:
         return _fail([{"code": "INVENTORY-LOAD", "detail": str(exc)}])
     try:
         report = evaluate(loaded, args.profile, inventory, args.as_of)
@@ -741,7 +1004,10 @@ def main(argv=None) -> int:
         print(json.dumps({"status": "FAIL", "errors": [{"code": "USAGE", "detail": str(exc)}]}), file=sys.stderr)
         return 2
 
-    text = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if args.format == "markdown":
+        text = render_report_markdown(report)
+    else:
+        text = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")
     print(text, end="")

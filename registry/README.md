@@ -100,9 +100,31 @@ python3 scripts/applicability.py evaluate \
 ```
 
 `--profile` may repeat; results are the union of the resolved control sets
-with baselines OR-ed together. `--out FILE` writes the report instead of
-stdout. `--registry DIR` evaluates another registry copy. Exit codes: 0
-success, 1 validation or evaluation failure, 2 usage error.
+with baselines OR-ed together. `--format markdown` renders the same report
+as deterministic, escaped Markdown instead of JSON. `--out FILE` writes the
+report instead of stdout. `--registry DIR` evaluates another registry copy.
+Exit codes: 0 success, 1 validation or evaluation failure, 2 usage error.
+
+Two reports can be compared with their input context bound:
+
+```sh
+python3 scripts/applicability.py compare report-a.json report-b.json [--format markdown]
+```
+
+Both inputs are validated against the report schema. The comparison records,
+per context field (registry version and digest, inventory digest, profiles,
+as-of, freshness policy), whether the two reports agree, and lists
+per-control status and version-basis transitions with reason additions and
+removals in deterministic order. When any context field differs the result
+carries `same_context: false` and an explicit warning: status differences
+between mismatched inputs reflect changed inputs and are not, by themselves,
+evidence of a security regression.
+
+All JSON inputs (inventories and reports) are read under explicit limits: a
+4 MiB size cap, rejection of duplicate object keys (contradictory facts are
+an input error, never a silent last-wins choice), and rejection of malformed
+or pathologically nested documents, all with exit code 1 and a stable error
+code.
 
 Run the suite with:
 
