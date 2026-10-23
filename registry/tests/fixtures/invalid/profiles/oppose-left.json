@@ -1,0 +1,15 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "oppose-left",
+  "title": "Fixture profile oppose-left",
+  "description": "Synthetic fixture: parent declaring FMR-002 as baseline.",
+  "controls": [
+    {
+      "control": "FMR-002",
+      "baseline": true
+    }
+  ],
+  "extends": [
+    "oppose-base"
+  ]
+}

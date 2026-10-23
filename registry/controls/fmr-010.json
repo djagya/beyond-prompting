@@ -1,0 +1,72 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-010",
+  "title": "Egress limited to an allowlisted inspecting proxy",
+  "summary": "Outbound network access leaves only through an allowlisting proxy that inspects destinations.",
+  "lifecycle": "active",
+  "category": "network",
+  "protected": {
+    "asset": "Internal networks, metadata services and third-party endpoints",
+    "failure": "Instructed content exfiltrates data to an arbitrary destination or pivots to internal services."
+  },
+  "predicate": {
+    "fact": "deployment.exposure",
+    "op": "in",
+    "value": [
+      "vpn",
+      "public"
+    ]
+  },
+  "rationale": "On remotely reachable deployments, destination-based allowlisting through an inspecting proxy gives the strongest practical egress story: unknown destinations are unreachable by default, and the proxy's decisions are auditable. This design conflicts with direct pinned-endpoint egress: only one of the two can govern the same traffic.",
+  "variants": [
+    {
+      "id": "explicit-proxy",
+      "description": "All egress is routed via an explicit allowlisting proxy; direct routes are absent by construction."
+    },
+    {
+      "id": "proxy-with-exceptions",
+      "description": "Proxy default with narrow, documented, time-boxed exceptions for destinations the proxy cannot carry.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "From inside the deployment's network position, attempt egress to an allowlisted destination and to a deliberately unknown destination; only the first may succeed. Record the proxy policy source.",
+    "evidence": "Probe outcomes and the proxy policy reference; no internal addresses or credentials."
+  },
+  "rollback": {
+    "method": "Remove the proxy routing and restore prior egress rules, re-testing that intended destinations still resolve and that the owner's access path survives."
+  },
+  "failure_modes": [
+    "One tool family bypasses the proxy via direct routes.",
+    "Allowlist entries grow without expiry and become a de facto open list.",
+    "The proxy itself becomes a single point of failure that operators 'fix' by disabling it."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public",
+  "conflicts": [
+    {
+      "control": "FMR-011",
+      "reason": "Mutually exclusive egress designs: an allowlisting proxy and direct pinned-endpoint egress cannot both govern the same traffic."
+    }
+  ]
+}

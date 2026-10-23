@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beyond-prompting.example/registry/schemas/profile.schema.json",
+  "title": "Deployment profile",
+  "description": "A composable deployment profile. Profiles select controls by reference with a per-profile baseline disposition; they never copy control bodies. Composition rules (extend-acyclicity, no duplicate resolved references, lifecycle-legal references) are enforced by the registry validator.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "title", "description", "controls"],
+  "properties": {
+    "schema": {"const": "beyond-prompting/profile@1"},
+    "id": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/profile_id"},
+    "title": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/short_string"},
+    "description": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "extends": {
+      "description": "Profiles composed into this one. The resolved control set is the union of all extended profiles and this profile's own references, in declaration order; cycles are rejected by the registry validator.",
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/profile_id"}
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["control", "baseline"],
+        "properties": {
+          "control": {"$ref": "https://beyond-prompting.example/registry/schemas/common.schema.json#/$defs/control_id"},
+          "baseline": {
+            "description": "true: omission violates this profile's declared baseline (evaluates to required when applicable); false: operator choice remains (evaluates to recommended).",
+            "type": "boolean"
+          },
+          "note": {"type": "string", "minLength": 1, "maxLength": 300}
+        }
+      }
+    }
+  }
+}

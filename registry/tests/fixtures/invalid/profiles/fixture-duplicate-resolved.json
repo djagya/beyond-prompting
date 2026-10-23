@@ -1,0 +1,16 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "fixture-duplicate-resolved",
+  "title": "Fixture profile fixture-duplicate-resolved",
+  "description": "Synthetic negative-fixture profile.",
+  "controls": [
+    {
+      "control": "FMR-002",
+      "baseline": true
+    },
+    {
+      "control": "FMR-002",
+      "baseline": false
+    }
+  ]
+}

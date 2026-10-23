@@ -1,0 +1,61 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-013",
+  "title": "Scheduled supply-chain audit",
+  "summary": "Dependency and extension audits run on a schedule and after every install or update, with findings dispositioned.",
+  "lifecycle": "active",
+  "category": "supply-chain",
+  "protected": {
+    "asset": "Installed code, extensions and images the deployment runs",
+    "failure": "A vulnerable or malicious dependency or extension remains deployed because nobody looked after an update."
+  },
+  "predicate": {
+    "all_of": []
+  },
+  "rationale": "Extensions, images and lazy installs change the executed code base without a human review step. A scheduled audit plus an after-change audit, with each finding explicitly dispositioned, closes the gap between 'installed' and 'known'. Findings that are accepted get an expiry, not a silent pass.",
+  "variants": [
+    {
+      "id": "native-audit",
+      "description": "Use the deployment's own security audit command in a scheduled job with a fail-on threshold the owner chose."
+    },
+    {
+      "id": "native-plus-sbom",
+      "description": "Native audit plus a pinned-image SBOM review and scheduled rescans with expiring ignores.",
+      "automation": "automated"
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read the scheduled audit job, its threshold, its delivery target and the last run's outcome; confirm the most recent install or update event has a corresponding audit run.",
+    "evidence": "Job definition summary, last-run outcome and disposition list; no environment contents."
+  },
+  "rollback": {
+    "method": "Pause or remove the audit job; record who accepted the reduced visibility."
+  },
+  "failure_modes": [
+    "The audit runs but findings are never dispositioned, drifting into noise.",
+    "The job's delivery target is broken, so failures reach nobody.",
+    "Lazy installs occur between scheduled runs and are never audited."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.7.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

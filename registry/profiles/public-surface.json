@@ -1,0 +1,20 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "public-surface",
+  "title": "Public or remotely exposed service surfaces",
+  "description": "Internet- or VPN-exposed Hermes services; composes the messaging-gateway baseline and adds exposure-specific controls.",
+  "extends": [
+    "messaging-gateway"
+  ],
+  "controls": [
+    {
+      "control": "FMR-010",
+      "baseline": true,
+      "note": "Introduces the egress design conflict against FMR-011 on purpose: the operator must choose one design explicitly."
+    },
+    {
+      "control": "FMR-013",
+      "baseline": true
+    }
+  ]
+}

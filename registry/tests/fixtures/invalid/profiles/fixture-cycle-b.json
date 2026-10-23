@@ -1,0 +1,15 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "fixture-cycle-b",
+  "title": "Fixture profile fixture-cycle-b",
+  "description": "Synthetic negative-fixture profile.",
+  "controls": [
+    {
+      "control": "FMR-002",
+      "baseline": true
+    }
+  ],
+  "extends": [
+    "fixture-cycle-a"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "beyond-prompting/evidence@1",
+  "control": "FMR-002",
+  "variant": "config-flag",
+  "profile": "private-server",
+  "status": "pass",
+  "collected_at": "2026-10-15",
+  "method": "Read the secret-redaction setting back per home with the deployment's own config query and compared the effective value in each of the two homes.",
+  "result_summary": "Both homes read back redaction enabled; no values or fingerprints retained.",
+  "redaction": {
+    "applied": true,
+    "notes": "Only setting names and boolean outcomes retained."
+  },
+  "artifacts": [
+    {
+      "kind": "config-readback",
+      "reference": "evidence/2026-10-redaction-readback.txt",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  ]
+}

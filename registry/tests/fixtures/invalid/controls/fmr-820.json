@@ -1,0 +1,61 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-820",
+  "title": "Fixture control FMR-820",
+  "summary": "Synthetic negative-fixture control.",
+  "lifecycle": "deprecated",
+  "category": "operations",
+  "protected": {
+    "asset": "fixture asset",
+    "failure": "fixture failure"
+  },
+  "predicate": {
+    "fact": "deployment.kind",
+    "op": "equals",
+    "value": "workstation"
+  },
+  "rationale": "Fixture rationale for negative tests.",
+  "variants": [
+    {
+      "id": "standard",
+      "description": "Fixture variant."
+    }
+  ],
+  "automation": "manual",
+  "verification": {
+    "method": "fixture method",
+    "evidence": "fixture evidence"
+  },
+  "rollback": {
+    "method": "fixture rollback"
+  },
+  "failure_modes": [
+    "fixture failure mode"
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.8.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ]
+  },
+  "last_verification": {
+    "date": "2026-09-01",
+    "registry_version": "0.1.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "registry test fixtures"
+    ]
+  },
+  "privacy": "public",
+  "supersession": {
+    "supersedes": [
+      "FMR-819"
+    ],
+    "superseded_by": "FMR-819"
+  }
+}

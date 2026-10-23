@@ -1,0 +1,63 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-012",
+  "title": "Durable delivery ledger for outbound messages",
+  "summary": "Outbound message delivery is recorded in a durable ledger so ambiguous outcomes are recoverable.",
+  "lifecycle": "active",
+  "category": "operations",
+  "protected": {
+    "asset": "Outbound message integrity and operator trust in delivery claims",
+    "failure": "A delivery failure or duplicate is invisible, so the operator repeats or loses outward communication without knowing."
+  },
+  "predicate": {
+    "fact": "messaging.connected",
+    "op": "equals",
+    "value": true
+  },
+  "rationale": "Wherever the deployment sends messages, the ambiguous-outcome rule demands a record: a write response proves only that a call returned. A durable per-message ledger with recovery-on-restart turns ambiguous delivery into a bounded reconciliation step instead of a guess.",
+  "variants": [
+    {
+      "id": "native-ledger",
+      "description": "Enable the deployment's delivery ledger feature where the build provides it, and read the value back."
+    },
+    {
+      "id": "external-ledger",
+      "description": "Maintain an append-only delivery log at the integration boundary with idempotency keys per outbound message.",
+      "automation": "manual"
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read the delivery ledger setting back; where recovery is configurable, exercise a restart canary on an isolated target and confirm undelivered entries reconcile rather than vanish.",
+    "evidence": "Setting read-back and the isolated restart reconciliation outcome; no message contents."
+  },
+  "rollback": {
+    "method": "Restore the previous setting; an external ledger is retired only after confirming no unreconciled entries remain."
+  },
+  "failure_modes": [
+    "The ledger is enabled but never queried, so failures still go unnoticed.",
+    "Recovery re-sends delivered messages because idempotency keys are absent.",
+    "Ledger retention is shorter than the operator's reconciliation window."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.9.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

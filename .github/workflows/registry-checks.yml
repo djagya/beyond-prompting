@@ -1,0 +1,28 @@
+# Minimal registry checks: unit tests, registry validation and repository
+# structural checks. These are the same commands as the local verification
+# notes in VERIFICATION.md, run on the GitHub-hosted Python.
+name: registry-checks
+
+on:
+  push:
+    branches: [main, "research/**"]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python3 -m pip install jsonschema PyYAML
+      - name: Unit tests
+        run: python3 -m unittest discover -s registry/tests
+      - name: Registry validation
+        run: python3 scripts/applicability.py validate-registry
+      - name: Repository structural checks
+        run: python3 scripts/validate.py

@@ -1,0 +1,12 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "oppose-base",
+  "title": "Fixture profile oppose-base",
+  "description": "Synthetic fixture: shared ancestor of an opposing-baseline composition.",
+  "controls": [
+    {
+      "control": "FMR-001",
+      "baseline": true
+    }
+  ]
+}

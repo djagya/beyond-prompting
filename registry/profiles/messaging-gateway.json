@@ -1,0 +1,43 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "messaging-gateway",
+  "title": "Messaging-gateway deployment",
+  "description": "A Hermes reached through a messaging platform, with connected delivery and potentially remote users.",
+  "controls": [
+    {
+      "control": "FMR-001",
+      "baseline": true
+    },
+    {
+      "control": "FMR-002",
+      "baseline": true
+    },
+    {
+      "control": "FMR-005",
+      "baseline": true,
+      "note": "Predicate-limited to publicly exposed deployments."
+    },
+    {
+      "control": "FMR-009",
+      "baseline": true
+    },
+    {
+      "control": "FMR-011",
+      "baseline": true,
+      "note": "Direct pinned-endpoint egress chosen as the base design; the public-surface profile adds the conflicting proxy alternative to force an explicit decision."
+    },
+    {
+      "control": "FMR-012",
+      "baseline": true
+    },
+    {
+      "control": "FMR-016",
+      "baseline": true,
+      "note": "Complements FMR-012: the ledger records intent, the readback proves delivery."
+    },
+    {
+      "control": "FMR-021",
+      "baseline": true
+    }
+  ]
+}

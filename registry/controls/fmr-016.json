@@ -1,0 +1,69 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-016",
+  "title": "Outbound delivery is confirmed by receipt readback",
+  "summary": "After an outward message send, delivery is established by reading back the platform's own receipt for the exact target; an ambiguous send outcome is reconciled first and never repeated automatically.",
+  "lifecycle": "active",
+  "category": "operations",
+  "protected": {
+    "asset": "The owner's outward communication channels and their reputation with counterparties",
+    "failure": "A send with an ambiguous outcome is retried blindly and produces duplicate external messages, or a failed send is reported as delivered."
+  },
+  "predicate": {
+    "fact": "messaging.connected",
+    "op": "equals",
+    "value": true
+  },
+  "rationale": "A send call returning is not delivery evidence: transports can accept and then drop, time out after actual delivery, or deliver without the caller observing the receipt. The platform's own record — the message identifier present in the target thread, or its absence on readback — is the deciding evidence. Repeating a non-idempotent external action whose outcome is unknown risks a duplicate that cannot be unsent, so reconciliation of the exact target and any existing receipt always precedes a retry, and the retry path is bounded and visible.",
+  "variants": [
+    {
+      "id": "receipt-readback",
+      "description": "After each send, read the target thread or delivery surface and record the platform-assigned identifier of the exact message; only that readback closes the delivery.",
+      "automation": "assisted"
+    },
+    {
+      "id": "held-retry",
+      "description": "When the send outcome is ambiguous, hold; reconcile the exact target and existing receipts; retry only through a bounded, human-visible path."
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "Send a synthetic message to a test target, read back its platform identifier, then simulate an ambiguous failure and confirm no automatic repeat occurs and the held state names the exact target.",
+    "evidence": "The platform message identifier and target captured on readback, plus the held state of the ambiguous case; no message content."
+  },
+  "rollback": {
+    "method": "Disable the readback requirement to restore send-and-trust behaviour; no state is mutated by readback itself.",
+    "safety": "Readback is a read-only operation against the platform."
+  },
+  "failure_modes": [
+    "A send-call success return is logged as delivery proof.",
+    "An ambiguous timeout triggers an automatic duplicate send.",
+    "Readback against the wrong thread clears a message that never arrived."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0",
+        "basis": "documentation"
+      }
+    ],
+    "notes": "Operational practice control: the range records the builds whose messaging delivery surfaces the procedure was read against, not a versioned platform feature."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0",
+    "notes": "General operational synthesis from recorded practice with private detail removed; the cited API documents a receipt surface, not an incident."
+  },
+  "provenance": {
+    "origin": "synthesis",
+    "authors": [
+      "Beyond Prompting operational practice synthesis"
+    ],
+    "references": [
+      "Telegram Bot API, sendMessage returns the sent Message object: https://core.telegram.org/bots/api#sendmessage",
+      "General operational synthesis from recorded practice; no publicly verifiable incident is cited."
+    ]
+  },
+  "privacy": "public"
+}

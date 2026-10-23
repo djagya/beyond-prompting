@@ -1,0 +1,63 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-008",
+  "title": "Interactive approval guard",
+  "summary": "Interactive sessions run with a guarded approval mode.",
+  "lifecycle": "deprecated",
+  "category": "approvals",
+  "protected": {
+    "asset": "Actions gated behind interactive approval",
+    "failure": "Interactive sessions approve consequential actions automatically."
+  },
+  "predicate": {
+    "fact": "config.approvals_mode",
+    "op": "in",
+    "value": [
+      "smart",
+      "manual"
+    ]
+  },
+  "rationale": "Superseded: guarding only the interactive mode leaves unattended session modes outside the policy. Retained for reference; profiles resolve this control to its successor.",
+  "variants": [
+    {
+      "id": "mode-guard",
+      "description": "Set the interactive approval mode to a guarded value and read it back."
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read the interactive approval mode back per home.",
+    "evidence": "Mode name and value per home."
+  },
+  "rollback": {
+    "method": "Restore the previous mode value."
+  },
+  "failure_modes": [
+    "Unattended session modes remain open, which is the gap that motivated supersession."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.5.0",
+        "maximum": "1.0.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public",
+  "supersession": {
+    "supersedes": [],
+    "superseded_by": "FMR-009"
+  }
+}

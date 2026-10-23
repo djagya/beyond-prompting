@@ -1,0 +1,13 @@
+{
+  "schema": "beyond-prompting/inventory@1",
+  "deployment": {
+    "kind": "messaging-gateway",
+    "exposure": "vpn",
+    "unattended_jobs": true,
+    "owner_model": "individual"
+  },
+  "hermes": {"version": "1.1.0", "install": "image"},
+  "platform": {"os": "linux", "containerized": true, "runs_as_root": false},
+  "messaging": {"connected": true},
+  "browser": {"enabled": true}
+}

@@ -1,0 +1,75 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-004",
+  "title": "Private-network URL access is blocked",
+  "summary": "Fetch and browser surfaces cannot reach private, loopback or cloud-metadata addresses unless explicitly required.",
+  "lifecycle": "active",
+  "category": "network",
+  "protected": {
+    "asset": "Internal services and metadata endpoints reachable from the deployment",
+    "failure": "Instructed content makes the agent probe or use internal endpoints as an exfiltration or pivot path."
+  },
+  "predicate": {
+    "any_of": [
+      {
+        "fact": "browser.enabled",
+        "op": "equals",
+        "value": true
+      },
+      {
+        "fact": "deployment.kind",
+        "op": "in",
+        "value": [
+          "ingestion-service",
+          "messaging-gateway"
+        ]
+      }
+    ]
+  },
+  "rationale": "Wherever the deployment can follow URLs, private-address access is a pivot into the surrounding network. The default posture is blocked, with any exception an explicit, reviewed allowance. Missing browser or deployment facts leave applicability undecided, never silently safe.",
+  "variants": [
+    {
+      "id": "config-deny",
+      "description": "Set every private-URL access setting the build exposes to disabled, including automatic local fallbacks, per home."
+    },
+    {
+      "id": "config-deny-plus-egress",
+      "description": "Config denial plus an egress rule that blocks private ranges at the network layer, covering tools that ignore configuration.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read each private-URL setting back per home, then run harmless deny and allow probes against a private address that must not be fetched.",
+    "evidence": "Setting names and read-back values plus probe outcomes; no internal address details beyond the fact that access was denied."
+  },
+  "rollback": {
+    "method": "Restore previous per-home values; remove the egress exception only after confirming no legitimate private fetch depends on it."
+  },
+  "failure_modes": [
+    "A sparse named profile inherits a permissive built-in default for an access leaf.",
+    "An automatic local fallback re-enables private access even with the main switch off.",
+    "Egress rules cover one tool family while another resolves private names freely."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

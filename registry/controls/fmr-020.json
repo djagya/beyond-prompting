@@ -1,0 +1,67 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-020",
+  "title": "Temporary credentials retire on confirmed outcome completion",
+  "summary": "A credential issued for one bounded task is revoked when the dependent outcome is confirmed complete — not at first use, and not beyond the agreed lifetime; local copies the agent had to make are destroyed immediately after use regardless.",
+  "lifecycle": "active",
+  "category": "secrets",
+  "protected": {
+    "asset": "Accounts reachable through credentials the owner issues for a single bounded task",
+    "failure": "A temporary credential is deleted while the dependent work still needs re-entry, or it survives past its agreed lifetime as silent standing access."
+  },
+  "predicate": {
+    "fact": "data_classes",
+    "op": "contains",
+    "value": "credentials"
+  },
+  "rationale": "Two failure directions mirror each other. Deleting the credential at first successful login strands half-finished dependent work and pressures the operator into keeping forbidden local copies. Keeping it indefinitely converts a bounded grant into standing access. Tying revocation to the confirmed dependent outcome — with readback that the result is stored — bounds both directions. An explicit revocation order or an agreed expiry always overrides the outcome gate. Local copies made to bridge a single use follow their own stricter rule: destroyed immediately after that use; extending the source credential's lifetime never extends copies or plaintext.",
+  "variants": [
+    {
+      "id": "outcome-bound-lease",
+      "description": "The task record names the dependent outcome; revocation runs after its confirmed storage, verified by readback."
+    },
+    {
+      "id": "immediate-copy-destruction",
+      "description": "Any local copy created to complete a single use is destroyed right after that use; the source credential's lifetime never propagates to copies."
+    }
+  ],
+  "automation": "manual",
+  "verification": {
+    "method": "Walk one temporary credential from issue to revocation: confirm the lease names the dependent outcome, revocation follows confirmed completion with readback, and no local copy survives the single use.",
+    "evidence": "The lease record, the completion receipt and the revocation readback; never the secret value."
+  },
+  "rollback": {
+    "method": "Revoke the credential immediately through the provider's own surface; the outcome gate never delays an explicit revocation.",
+    "safety": "Revocation is always safe to perform early; the cost is re-issuing, not exposure."
+  },
+  "failure_modes": [
+    "Revocation at first use strands the dependent outcome mid-task.",
+    "A local bridge copy is kept past its single use, just in case.",
+    "An explicit owner revocation is delayed behind the outcome gate."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0",
+        "basis": "documentation"
+      }
+    ],
+    "notes": "Operational practice control about credential handling around the deployment, not a platform feature; the range records the builds the surrounding procedure was exercised against."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0",
+    "notes": "General operational synthesis from recorded practice with private detail removed; no specific public incident is claimed."
+  },
+  "provenance": {
+    "origin": "synthesis",
+    "authors": [
+      "Beyond Prompting operational practice synthesis"
+    ],
+    "references": [
+      "General operational synthesis from recorded practice; no publicly verifiable incident is cited."
+    ]
+  },
+  "privacy": "public"
+}

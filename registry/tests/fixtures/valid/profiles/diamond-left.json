@@ -1,0 +1,15 @@
+{
+  "schema": "beyond-prompting/profile@1",
+  "id": "diamond-left",
+  "title": "Fixture profile diamond-left",
+  "description": "Synthetic fixture: first parent extending the shared ancestor.",
+  "controls": [
+    {
+      "control": "FMR-002",
+      "baseline": true
+    }
+  ],
+  "extends": [
+    "diamond-base"
+  ]
+}

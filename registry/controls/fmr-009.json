@@ -1,0 +1,88 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-009",
+  "title": "Approval policy fails closed across session modes",
+  "summary": "Approval policy guards interactive and unattended session modes together, not only the interactive path.",
+  "lifecycle": "active",
+  "category": "approvals",
+  "protected": {
+    "asset": "Every action path that approval can gate",
+    "failure": "One session mode, typically an unattended one, bypasses the approval posture the operator believes they have."
+  },
+  "predicate": {
+    "all_of": [
+      {
+        "fact": "config.approvals_mode",
+        "op": "in",
+        "value": [
+          "smart",
+          "manual"
+        ]
+      },
+      {
+        "any_of": [
+          {
+            "fact": "deployment.unattended_jobs",
+            "op": "equals",
+            "value": false
+          },
+          {
+            "fact": "config.unattended_mode",
+            "op": "equals",
+            "value": "deny"
+          }
+        ]
+      }
+    ]
+  },
+  "rationale": "Approval posture is only as strong as the weakest session mode. Where unattended jobs exist, they must be explicitly denied closed; where none exist, guarding the interactive mode is sufficient. Missing facts about either mode leave the decision open rather than silently safe.",
+  "variants": [
+    {
+      "id": "readback-pair",
+      "description": "Read back the interactive mode and every unattended mode per home and compare both against the intended pair."
+    },
+    {
+      "id": "deploy-assert",
+      "description": "Additionally fail the deployment itself on any read-back mismatch, treating an unreadable value as a retryable state rather than a pass.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "automated",
+  "verification": {
+    "method": "Read the interactive approval mode and each unattended approval mode the build exposes, per home, and compare against the intended posture; on builds lacking an unattended mode key, record the required external execution boundary instead.",
+    "evidence": "Mode names, effective values and comparison outcomes per home; missing keys listed explicitly."
+  },
+  "rollback": {
+    "method": "Restore previous mode values per home and record the acceptance of any permissive value."
+  },
+  "failure_modes": [
+    "Unattended modes are read from one home and assumed for all.",
+    "A missing unattended key is treated as denial instead of an open path needing an external boundary."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.8.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public",
+  "supersession": {
+    "supersedes": [
+      "FMR-008"
+    ]
+  }
+}

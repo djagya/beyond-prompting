@@ -1,0 +1,63 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-005",
+  "title": "Exposed dashboards and APIs require authentication",
+  "summary": "Any remotely exposed dashboard, API or webhook surface authenticates callers and rejects anonymous access.",
+  "lifecycle": "active",
+  "category": "network",
+  "protected": {
+    "asset": "Gateway-adjacent control surfaces reachable from the network",
+    "failure": "An unauthenticated stranger reaches the dashboard, API or webhook and drives the deployment or reads its state."
+  },
+  "predicate": {
+    "fact": "deployment.exposure",
+    "op": "equals",
+    "value": "public"
+  },
+  "rationale": "Public exposure turns every service surface into an Internet-reachable door. Anonymous rejection, exact-origin checks and signature or replay protections must match the exposure actually observed from an authorized external vantage point, not the bind address alone.",
+  "variants": [
+    {
+      "id": "gateway-auth",
+      "description": "Use the service's own authentication and pairing surfaces; verify anonymous requests are rejected from an external vantage point."
+    },
+    {
+      "id": "fronting-proxy",
+      "description": "Terminate an authenticating reverse proxy in front of the service with loopback-only upstream binds.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "assisted",
+  "verification": {
+    "method": "From an authorized external vantage point, request each exposed surface without credentials and with wrong credentials; all must be rejected, and published container ports must be verified bound as intended, remembering published ports bypass host firewalls.",
+    "evidence": "Rejection outcomes per surface and vantage point, plus bind and publish inventory; no tokens or session values."
+  },
+  "rollback": {
+    "method": "Restore the previous listener and proxy configuration; confirm the owner's access path survives before declaring rollback complete."
+  },
+  "failure_modes": [
+    "A dashboard is bound to loopback in-container but published on all host interfaces.",
+    "Auth protects the browser path while the API path allows anonymous calls.",
+    "A proxy layer is added without removing a still-reachable direct bind."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.6.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}

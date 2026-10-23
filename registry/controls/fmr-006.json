@@ -1,0 +1,63 @@
+{
+  "schema": "beyond-prompting/control@1",
+  "id": "FMR-006",
+  "title": "Low-trust ingestion is isolated from privileged capability",
+  "summary": "Workloads that ingest untrusted content run in a separate profile without broad credentials or admin toolsets.",
+  "lifecycle": "active",
+  "category": "isolation",
+  "protected": {
+    "asset": "Credentials, private data and admin surfaces of the wider deployment",
+    "failure": "Hostile ingested content obtains privileged credentials or administrative tool access in the same session."
+  },
+  "predicate": {
+    "fact": "inputs.untrusted_content",
+    "op": "equals",
+    "value": true
+  },
+  "rationale": "Untrusted input plus private data plus outward capability is the canonical dangerous intersection. Separating ingestion into its own bounded profile removes an edge from that triangle: the ingestion profile gets only the toolsets and credential scopes its job needs, and no administrative reach.",
+  "variants": [
+    {
+      "id": "separate-profile",
+      "description": "A dedicated ingestion profile with a minimal toolset, no memory-write capability and credentials scoped to its purpose."
+    },
+    {
+      "id": "separate-host",
+      "description": "Ingestion runs on a separate container or host with its own network position and no route to privileged surfaces.",
+      "automation": "assisted"
+    }
+  ],
+  "automation": "manual",
+  "verification": {
+    "method": "Inventory the ingestion profile's effective toolsets, credential scopes by name only, and network reach toward privileged surfaces; attempt a denied privileged call where a disposable target exists.",
+    "evidence": "Toolset and credential-scope inventory by name, plus denial outcomes; no credential values."
+  },
+  "rollback": {
+    "method": "Merge or remove the separated profile only with an explicit owner decision recorded, since rollback here widens the trust boundary."
+  },
+  "failure_modes": [
+    "The ingestion profile keeps one broad administrative credential 'temporarily'.",
+    "A globally enabled extension silently re-adds privileged tools to every profile.",
+    "Network isolation is assumed from the profile name without testing reachability."
+  ],
+  "hermes_versions": {
+    "verified": [
+      {
+        "minimum": "0.7.0",
+        "maximum": "1.2.0",
+        "basis": "illustrative"
+      }
+    ],
+    "notes": "Synthetic seed control: the range is an illustrative placeholder for the example registry, not a verified compatibility claim."
+  },
+  "last_verification": {
+    "date": "2026-10-23",
+    "registry_version": "0.3.0"
+  },
+  "provenance": {
+    "origin": "original",
+    "authors": [
+      "Beyond Prompting hardening registry seed"
+    ]
+  },
+  "privacy": "public"
+}
