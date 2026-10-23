@@ -132,13 +132,18 @@ Run the suite with:
 python3 -m unittest discover -s registry/tests
 ```
 
+The unit suite, `validate-registry` and the repository structural checks
+also run on every push and pull request via
+`.github/workflows/registry-checks.yml`.
+
 ## Validation checks
 
 `validate-registry` enforces, beyond JSON Schema conformance: symmetric
 conflicts, no self-conflicts, conflict targets exist; supersession links are
 consistent, acyclic, and never point at retired controls; verification dates
 are neither stale nor in the future relative to the manifest `as_of`;
-verified version ranges are ordered; profiles form an extends DAG — shared
+verified version ranges are ordered and every range declares its evidence
+basis; profiles form an extends DAG — shared
 ancestors reached through different children compose once (first-visit
 order) and are not cycles, while a profile reaching itself through extends
 is rejected — with no control declared more than once inside one
