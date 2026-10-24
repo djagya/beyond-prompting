@@ -34,6 +34,7 @@ change external state without the relevant implementation mandate.
 - **Set up a new Hermes (for yourself or someone else):** [Reference Setup](setup-reference.en.md), then [Identity, Memory and Context](identity-memory-context.en.md). Use the [templates](../templates/) as starting points; the new owner writes their own identity and creates their own secrets.
 - **Keep a running Hermes healthy:** [Operations](operations.en.md), with the [runtime automation governance](../skills/runtime-automation-governance/SKILL.md), [live state store](../skills/live-state-store-maintenance/SKILL.md) and [destructive cleanup](../skills/archive-gated-destructive-cleanup/SKILL.md) procedures.
 - **Maintain Hermes from a coding agent:** [Operating Hermes with a Coding Agent](coding-agent-operator.en.md).
+- **Review or contribute to someone else's repository:** [Reviewing Other People's Repositories](reviewing-other-repos.en.md) and its [procedure](../skills/contribution-review/SKILL.md), then [public contribution integrity](../skills/public-contribution-integrity/SKILL.md) before posting.
 
 You can read every article for education. Routine execution should load only the procedure relevant to the task. Do not paste the entire collection into persistent memory or replace your system prompt with it.
 

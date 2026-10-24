@@ -15,7 +15,7 @@ metadata:
 
 Load before **any** public publication or mutation: pushing a branch or tag (a push to a public fork is publication even with no PR), opening or editing a PR/issue/comment/review, uploading artifacts, publishing a release or site, deleting or force-updating a public ref. Also load when a private-data leak or foreign authorship is suspected in public state.
 
-Skip purely local review unless publication, provenance, privacy, licensing or relationship claims come into scope. This skill does not own routine Git mechanics, implementation or testing.
+Skip purely local review unless publication, provenance, privacy, licensing or relationship claims come into scope. This skill does not own routine Git mechanics, implementation or testing. The technical correctness of a review, PR, issue or comment in a repository you do not own belongs to `contribution-review` (in this collection); run it before this gate.
 
 ## Modes and authority
 
