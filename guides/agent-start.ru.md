@@ -34,6 +34,7 @@ version-dependent или неприменимые здесь. Сохрани д�
 - **Поднять новый Hermes (для себя или для другого человека):** [эталонный сетап](setup-reference.ru.md), затем [идентичность, память и контекст](identity-memory-context.ru.md). [Шаблоны](../templates/) — отправная точка; новый владелец сам пишет identity и сам создаёт свои секреты.
 - **Поддерживать работающий Hermes:** [эксплуатация](operations.ru.md) и процедуры [runtime automation governance](../skills/runtime-automation-governance/SKILL.md), [live state store](../skills/live-state-store-maintenance/SKILL.md) и [destructive cleanup](../skills/archive-gated-destructive-cleanup/SKILL.md).
 - **Сопровождать Hermes через coding agent:** [Hermes и coding agent](coding-agent-operator.ru.md).
+- **Делать ревью или вклад в чужой репозиторий:** [Ревью чужих репозиториев](reviewing-other-repos.ru.md) и его [процедура](../skills/contribution-review/SKILL.md), затем [public contribution integrity](../skills/public-contribution-integrity/SKILL.md) перед публикацией.
 
 Все статьи можно прочитать для образования. В повседневной работе загружай только относящуюся к задаче процедуру. Не помещай весь корпус в persistent memory и не заменяй им system prompt.
 

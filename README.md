@@ -85,6 +85,15 @@ Reusable agent procedures for running it:
 - [Live state store maintenance](skills/live-state-store-maintenance/SKILL.md) — diagnose and repair the SQLite session/state store without making it worse.
 - [Archive-gated destructive cleanup](skills/archive-gated-destructive-cleanup/SKILL.md) — classify, archive and verify before deleting.
 - [Public contribution integrity](skills/public-contribution-integrity/SKILL.md) — publish to a public repository without leaking private history.
+- [Contribution review](skills/contribution-review/SKILL.md) — check every technical claim before posting a review, PR, issue or comment to someone else's repository.
+
+### Reviewing and contributing to other people's repositories
+
+Two independent passes, an adversarial pass on your own draft, scoped evidence for every claim, and a re-check right before posting. Built around an observed miss: a review that tested one provider and called a real bug an edge case.
+
+- [English — Reviewing and Contributing to Other People's Repositories with Agents](guides/reviewing-other-repos.en.md)
+- [Русский — Ревью и вклад в чужие репозитории с помощью агентов](guides/reviewing-other-repos.ru.md)
+- [Reusable agent procedure](skills/contribution-review/SKILL.md)
 
 ### Efficient controllers
 
