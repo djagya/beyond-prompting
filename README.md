@@ -86,6 +86,7 @@ Reusable agent procedures for running it:
 - [Archive-gated destructive cleanup](skills/archive-gated-destructive-cleanup/SKILL.md) — classify, archive and verify before deleting.
 - [Public contribution integrity](skills/public-contribution-integrity/SKILL.md) — publish to a public repository without leaking private history.
 - [Contribution review](skills/contribution-review/SKILL.md) — check every technical claim before posting a review, PR, issue or comment to someone else's repository.
+- [Simplify a system](skills/simplify-system/SKILL.md) — read-only review of one overgrown behaviour toward a single source of truth, one decision path and explicit state machines, with measured costs and a switch-guarded migration.
 
 ### Reviewing and contributing to other people's repositories
 
