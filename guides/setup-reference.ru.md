@@ -14,8 +14,10 @@ host:
   ops repo (git): compose.yaml, scripts/, hermes/identity/ --apply--> data dir
   docker: hermes container (pinned image, s6) = gateway + cron for every profile
           bind mount: ./data/hermes (gitignored) --> $HERMES_HOME
-  optional sidecars (loopback only): web UI (chat proxied through the gateway),
-          log viewer, isolated browser containers
+  optional sidecars (loopback only or no port at all): speech-to-text (internal
+          network only), log viewer, isolated browser containers + controller
+  in-container extras (supervised): observability collector/dashboard behind its
+          own private-network node, memory sidecar on a local socket
   host cron: identity publish (runtime -> git), encrypted backup --> off-site
           repository (keys host-only)
 ```
@@ -81,7 +83,7 @@ ops-repo/
 | `healthcheck` | Только для наблюдаемости: Docker никогда не перезапускает unhealthy-контейнер. Дай ему длинный `start_period` (здесь 30 мин), чтобы миграции первой загрузки оставались в `starting`. |
 | Без volume на `/opt/hermes` | Код принадлежит image. Долговечные исправления поставляются новым digest image, а не файлами, скопированными в работающий контейнер. |
 | Один gateway на директорию данных | Второй контейнер из того же image (например, dashboard sidecar) запускает второй gateway на том же bot token; потерянные сообщения тогда выглядят как «сломался голос». |
-| Web UI sidecar без `depends_on` | Из-за `depends_on: hermes` каждый `compose up webui` попутно пересоздавал gateway. UI проксирует чат через gateway и просто выдаёт ошибки, пока тот не ответит. |
+| Web UI sidecar (если он у тебя есть) без `depends_on` | Из-за `depends_on: hermes` каждый `compose up webui` попутно пересоздавал gateway. UI проксирует чат через gateway и просто выдаёт ошибки, пока тот не ответит. |
 | Инструменты с доступом к Docker socket | Монтирование socket с `:ro` ничего не защищает: API за ним read-write, то есть root на хосте. Отключи actions, включи auth, оставь loopback или поставь read-only socket proxy. |
 
 Запускай браузеры в отдельных контейнерах, а не в cgroup gateway, в сети, которую браузерные контейнеры делят только со своим контроллером. Утёкшая вкладка не должна быть способна убить gateway, а у прорыва из renderer не должно быть маршрута к API gateway.
@@ -91,7 +93,7 @@ ops-repo/
 1. **Привязывай каждый опубликованный порт к `127.0.0.1`.** Docker вставляет свои NAT-правила до того, как пакет увидит ufw, поэтому `ufw deny` не защищает порт, опубликованный на `0.0.0.0`.
 2. **Открывай admin UI через приватный ingress с аутентификацией.** Tailscale Serve — один из вариантов: HTTPS, доступ только из приватной сети, к запросу привязана identity. Собственный пароль приложения добавь вторым слоем.
 3. **SSH только через приватную сеть**, только по ключам, без входа под root. В sshd побеждает первое совпадение: cloud-init drop-in с `PasswordAuthentication yes` перебивает файл, прочитанный позже, поэтому называй свой `00-…`. sshd с socket activation держит старый config, пока не перезапустится `ssh.service`.
-4. **API server** выключен, пока он не нужен клиенту. Web UI sidecar он нужен: тогда он слушает `0.0.0.0` внутри контейнера (чтобы до него доходили compose network и опубликованный порт), требует ключ, а хост публикует его только на loopback. Остаточный риск: любой контейнер в этой compose network, у которого есть ключ, может управлять агентом.
+4. **API server** выключен, пока он не нужен клиенту (например, инструменту оператора или соседнему сервису в compose network). Тогда он слушает `0.0.0.0` внутри контейнера (чтобы до него доходили compose network и опубликованный порт), требует ключ, а хост публикует его только на loopback. Остаточный риск: любой контейнер в этой compose network, у которого есть ключ, может управлять агентом.
 5. Проверяй **снаружи**: просканируй порты публичного и LAN-адреса хоста с другой машины. Bind-адрес в compose — не доказательство ([hardening §10](hermes-hardening.md#10-secure-gateway-access-and-exposed-services)).
 
 ## 6. Где живут секреты

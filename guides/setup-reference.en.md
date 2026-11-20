@@ -14,8 +14,10 @@ host:
   ops repo (git): compose.yaml, scripts/, hermes/identity/ --apply--> data dir
   docker: hermes container (pinned image, s6) = gateway + cron for every profile
           bind mount: ./data/hermes (gitignored) --> $HERMES_HOME
-  optional sidecars (loopback only): web UI (chat proxied through the gateway),
-          log viewer, isolated browser containers
+  optional sidecars (loopback only or no port at all): speech-to-text (internal
+          network only), log viewer, isolated browser containers + controller
+  in-container extras (supervised): observability collector/dashboard behind its
+          own private-network node, memory sidecar on a local socket
   host cron: identity publish (runtime -> git), encrypted backup --> off-site
           repository (keys host-only)
 ```
@@ -81,7 +83,7 @@ Start from [`templates/compose.example.yaml`](../templates/compose.example.yaml)
 | `healthcheck` | Observability only: Docker never restarts an unhealthy container. Give it a long `start_period` (30 min here) so first-boot migrations stay `starting`. |
 | No volume on `/opt/hermes` | The image owns its code. Durable fixes ship as a new image digest, not as files copied into a running container. |
 | One gateway per data directory | A second container from the same image (e.g. a dashboard sidecar) starts a second gateway on the same bot token; dropped messages then look like "voice is broken". |
-| Web UI sidecar without `depends_on` | `depends_on: hermes` made every `compose up webui` recreate the gateway as a side effect. The UI proxies chat through the gateway and just errors until it answers. |
+| Web UI sidecar (if you run one) without `depends_on` | `depends_on: hermes` made every `compose up webui` recreate the gateway as a side effect. The UI proxies chat through the gateway and just errors until it answers. |
 | Docker-socket tools | A `:ro` socket mount protects nothing: the API behind it is read-write, i.e. host root. Actions off, auth, loopback, or a read-only socket proxy. |
 
 Run browsers in separate containers, not in the gateway's cgroup, on a network the browser containers share only with their controller. A leaked tab should not be able to kill the gateway, and a renderer breakout should have no route to the gateway API.
@@ -91,7 +93,7 @@ Run browsers in separate containers, not in the gateway's cgroup, on a network t
 1. **Bind every published port to `127.0.0.1`.** Docker inserts its NAT rules before ufw sees the packet, so `ufw deny` does not protect a port published on `0.0.0.0`.
 2. **Expose admin UIs through authenticated private ingress.** Tailscale Serve is one example: HTTPS, reachable only from your private network, with identity attached. Add the app's own password as a second layer.
 3. **SSH only over the private network**, keys only, no root login. sshd is first-match-wins: a cloud-init drop-in with `PasswordAuthentication yes` beats a later file, so name yours `00-…`. A socket-activated sshd keeps its old config until `ssh.service` restarts.
-4. **The API server** stays off unless a client needs it. A web UI sidecar does: then it listens on `0.0.0.0` inside the container (so the compose network and the published port reach it), requires a key, and the host publishes it on loopback only. Residual risk: any container on that compose network holding the key can drive the agent.
+4. **The API server** stays off unless a client needs it (for example an operator tool or a companion service on the compose network). Then it listens on `0.0.0.0` inside the container (so the compose network and the published port reach it), requires a key, and the host publishes it on loopback only. Residual risk: any container on that compose network holding the key can drive the agent.
 5. Verify from **outside**: run a port scan of the host's public and LAN addresses from another machine. A bind address in compose is not evidence ([hardening §10](hermes-hardening.md#10-secure-gateway-access-and-exposed-services)).
 
 ## 6. Secrets layout
