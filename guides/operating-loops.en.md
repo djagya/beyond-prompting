@@ -50,7 +50,7 @@ A user correction may affect configuration, task bodies, profile descriptions, c
 
 Do not rewrite historical evidence into current instructions. Classify paused and retired artifacts separately; correction does not authorize reactivation. Keep one canonical current value per owner. Update private identity only through its own approval path.
 
-When an operator or coding agent changes something the runtime agent tracks, tell it with a labelled one-shot note (for example `Operator note:` sent through a non-interactive run, prompt on stdin) instead of editing its records. Ask it to verify each item before closing its own tasks and to reply with what it closed and what it kept.
+When an operator or coding agent changes something the runtime agent tracks, tell it with a labelled note through a channel it authenticates (for example `Operator note:` sent in an authenticated API session, with a one-shot run as the fallback) instead of editing its records. Ask it to verify each item before closing its own tasks and to reply with what it closed and what it kept.
 
 ## 5. Accept the user's job in the requested form
 

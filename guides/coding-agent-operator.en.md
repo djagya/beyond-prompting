@@ -153,13 +153,15 @@ Carry the *Needs you* list forward in every update until each item is cleared. A
 
 ## 10. Tell the runtime agent what changed
 
-After a change that affects Hermes (a fixed bug it reported, a new skill, a retired job), send it a labelled one-shot note instead of editing its records:
+After a change that affects Hermes (a fixed bug it reported, a new skill, a retired job), tell it through a channel it authenticates, instead of editing its records. The reference uses the gateway's API over the private network: one API session per workstream, the real context in the first message, and a request for a receipt. A scripted one-shot run is the fallback when the API is down:
 
 ```bash
 ssh <box> 'cd <ops-repo> && ./scripts/hermes-cli.sh -z "$(cat)"' < note.txt
 ```
 
 `hermes -z` is the scripted one-shot mode: one prompt in, only the reply out. `hermes-cli.sh` stands for your wrapper that runs the CLI inside the container as the runtime user. The prompt travels on stdin, so no quoting problems.
+
+Two practice lessons. Expect the runtime agent to refuse decisions you relay on the owner's behalf ("the owner decided X"): changes only it can make need the owner's own message to it, so give the owner one ready-to-send line instead. And send a very long note in parts: one failed twice at the model provider while each half passed.
 
 Start the note with `Operator note (from the coding agent):`, list the changes, and ask Hermes to verify each one itself before closing its own tasks and to reply with what it closed and what it kept. In one run it closed four items and kept five, with reasons; a note alone would have closed all nine.
 

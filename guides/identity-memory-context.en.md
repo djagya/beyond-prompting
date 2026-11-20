@@ -186,7 +186,7 @@ A correction ("we no longer use X", "that channel is private") usually lives in 
 
 When you change something the agent owns or tracks (a skill it maintains, a task it filed, a rule it follows), tell it rather than letting it discover the drift.
 
-- Send a **one-shot, labelled operator note**: `hermes -z` takes one prompt and prints only the reply. Pipe the note on stdin through your CLI wrapper (it runs the CLI inside the container as the runtime user), so nothing needs quoting:
+- Send a **labelled operator note** through a channel the agent authenticates. The reference uses the gateway's API over the private network (one API session per workstream, a request for a receipt); see [Operating Hermes with a Coding Agent §10](coding-agent-operator.en.md). The fallback when the API is down is a one-shot run: `hermes -z` takes one prompt and prints only the reply. Pipe the note on stdin through your CLI wrapper (it runs the CLI inside the container as the runtime user), so nothing needs quoting:
 
   ```bash
   ssh <host> 'cd <ops-repo> && ./scripts/hermes-cli.sh -z "$(cat)"' < operator-note.txt
