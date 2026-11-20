@@ -80,7 +80,7 @@ Discover safely when possible; ask only when the answer changes the path.
 
 Never infer a company/client boundary from a profile name. Never print secret values.
 
-Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
+Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context; current Hermes releases ship a credential vault that fills logins and cards without the model seeing their values. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
 
 ## Source priority
 
