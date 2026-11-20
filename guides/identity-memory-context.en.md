@@ -17,7 +17,7 @@ What the model sees at session start, top to bottom:
 | 3 | Tool guidance | built in | — | — |
 | 4 | Memory | `$HERMES_HOME/memories/MEMORY.md`, `USER.md` | `memory.memory_char_limit`, `memory.user_char_limit` | **Frozen at session start**; over the cap every entry still loads, but each new add is refused. This install sets both limits above the upstream defaults; read the effective values with `hermes config get`. |
 | 5 | Skills index | names + descriptions only | — | Full skill loaded on demand (`skills_list()` → `skill_view(name)`). |
-| 6 | Project context | first match from the working dir: `.hermes.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules` / `.cursor/rules/*.mdc` | `context_file_max_chars` when set, otherwise a model-scaled cap | Only **one** type loads (§5). |
+| 6 | Project context | first match from the working dir: `.hermes.md` → `AGENTS.override.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules` / `.cursor/rules/*.mdc` | `context_file_max_chars` when set, otherwise a model-scaled cap | Only **one** type loads (§5). |
 | 7 | Timestamp, platform hints | built in | — | — |
 | 8 | Optional `/personality` overlay | config | — | — |
 
@@ -118,7 +118,7 @@ Shield: put a **non-empty** `.hermes.md` at the root of the agent's working dire
 Checklist:
 
 - [ ] Agent working dir has a non-empty `.hermes.md`.
-- [ ] Nothing in that dir's `AGENTS.md`/`CLAUDE.md`/`.cursor/` is meant for this agent (if it is, move it into `.hermes.md`).
+- [ ] Nothing in that dir's `AGENTS.override.md`/`AGENTS.md`/`CLAUDE.md`/`.cursor/` is meant for this agent (if it is, move it into `.hermes.md`).
 - [ ] Context files contain no hidden HTML comments or invisible characters — the injection scanner blocks the whole file.
 - [ ] Cron jobs that need project context have a `workdir`; everything else they need is in SOUL/ARCHITECTURE/skills.
 
@@ -186,7 +186,7 @@ A correction ("we no longer use X", "that channel is private") usually lives in 
 
 When you change something the agent owns or tracks (a skill it maintains, a task it filed, a rule it follows), tell it rather than letting it discover the drift.
 
-- Send a **one-shot, labelled operator note**: `hermes -z` takes one prompt and prints only the reply. Pipe the note on stdin through your CLI wrapper (it runs the CLI inside the container as the runtime user), so nothing needs quoting:
+- Send a **labelled operator note** through a channel the agent authenticates. The reference uses the gateway's API over the private network (one API session per workstream, a request for a receipt); see [Operating Hermes with a Coding Agent §10](coding-agent-operator.en.md). The fallback when the API is down is a one-shot run: `hermes -z` takes one prompt and prints only the reply. Pipe the note on stdin through your CLI wrapper (it runs the CLI inside the container as the runtime user), so nothing needs quoting:
 
   ```bash
   ssh <host> 'cd <ops-repo> && ./scripts/hermes-cli.sh -z "$(cat)"' < operator-note.txt

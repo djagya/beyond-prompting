@@ -41,7 +41,7 @@ Run two reviewer agents on the same commit. Do not show either one the other's d
 
 When the code branches by provider, backend, platform or config, each reviewer lists the variants from the code itself (every resolver, adapter or handler in the dispatch) and checks the claim on each one, or limits the claim to the variants it checked. This is the step that would have caught the case above.
 
-Two agents on the same model are two contexts, not two opinions from different models. That is still useful: each reads the code without the other's framing. If you want model diversity as well, use a different model for one pass and say so in your notes.
+Two agents on the same model are two contexts, not two opinions from different models. That is still useful: each reads the code without the other's framing. Where a wrong "looks fine" costs money or security, use different model families rather than only fresh contexts, and never let a family review its own build. Practice, not an official recommendation: money, security and merge reviews in the reference setup run in three families; a middle round gets one review of the diff. Say which families ran in your notes.
 
 ## 4. An adversarial pass on your own draft
 
@@ -72,7 +72,7 @@ Drafts go stale while you work on them.
 1. Fetch the current head commit. If it moved, re-run the affected checks or do not post.
 2. Read the comments and reviews added since the draft. Drop the points someone already raised or fixed.
 3. Fetch the default branch and check that the touched files did not change since your base.
-4. Run one more search for duplicate issues and pull requests.
+4. Search for duplicates beyond a phrase: list open pull requests that touch the same files and read their diffs; search with broad terms and with the error text a user would paste; and check your own past reviews and comments on the repository, where you may already have asked another PR for this change. A phrase search once missed that three of seven planned fixes duplicated open PRs.
 
 ## 7. The final gate
 

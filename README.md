@@ -12,6 +12,8 @@ Beyond Prompting is about turning intentions into bounded, verifiable outcomes w
 
 Give your agent the [English entry guide](guides/agent-start.en.md) or [русский агентский вход](guides/agent-start.ru.md). Each contains a ready-to-use read-only adoption prompt, route selection, capability fallbacks and synthetic acceptance scenarios. No private setup or fork installation is required.
 
+**Wondering what the Hermes fork changes?** Read [the fork in plain words — EN](guides/hermes-fork.en.md) / [RU](guides/hermes-fork.ru.md).
+
 **Setting up Hermes for yourself or someone else?** Follow [Reference Setup — EN](guides/setup-reference.en.md) / [эталонный сетап — RU](guides/setup-reference.ru.md), then keep it healthy with [Operations — EN](guides/operations.en.md) / [эксплуатация — RU](guides/operations.ru.md). Starter files live in [`templates/`](templates/).
 
 Use [Operating Loops — EN](guides/operating-loops.en.md) / [рабочие циклы — RU](guides/operating-loops.ru.md) for concrete task, handoff, continuation and correction contracts. Read only the route relevant to the task; do not import this collection as a replacement system prompt. See [validation and compatibility](guides/validation.md) for what has and has not been checked.
@@ -111,16 +113,22 @@ Turn a week of real sessions into evidence-grounded lessons, audit the relevant 
 - [Русский — Извлечение уроков за неделю](guides/weekly-learning-extraction.ru.md)
 - [Reusable agent procedure](skills/weekly-learning-extraction/SKILL.md)
 
-### Setup patterns and the Hermes fork
+### The Hermes fork
+
+What Danil's fork of Hermes changes compared with upstream, in plain words: why it exists, what you notice, what went back upstream, what it costs and what to check before running the image.
+
+- [English — Danil's Hermes Fork, in Plain Words](guides/hermes-fork.en.md)
+- [Русский — Форк Hermes Данила простыми словами](guides/hermes-fork.ru.md)
+- [The fork on GitHub](https://github.com/djagya/hermes-agent) · [Upstream Hermes](https://github.com/NousResearch/hermes-agent)
+
+The fork is upstream Hermes plus operational fixes for one long-running Docker deployment, not official upstream. It is better for that deployment profile, not better in general; the guide says when stock upstream is enough.
+
+### Setup patterns
 
 A portable map of the controls behind this practice: capability-aware delegation, current-state ownership, human-job acceptance, explicit external boundaries, and native lifecycle ownership.
 
 - [English — Setup Patterns Worth Reusing](guides/setup-patterns.en.md)
 - [Русский — Приёмы сетапа, которые стоит перенять](guides/setup-patterns.ru.md)
-- [Danil's Hermes fork](https://github.com/djagya/hermes-agent)
-- [Upstream Hermes](https://github.com/NousResearch/hermes-agent)
-
-The fork is upstream Hermes plus operational fixes for one long-running Docker deployment, not official upstream. The guide's fork section lists what the fork changes by area (with upstream status for each), the trade-offs of running it, and when stock upstream is enough. Its branches evolve; inspect the intended revision and current upstream diff rather than assuming every fork change remains unmerged or that its default branch matches the deployed build.
 
 ## Conventions for agents
 

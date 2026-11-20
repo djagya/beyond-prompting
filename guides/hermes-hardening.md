@@ -140,6 +140,7 @@ Container rules the reference deployment encodes in its compose file:
 
 - **"Not root" means the gateway process, not the container start user.** The image starts as root (`user: "0:0"`) so its entrypoint can remap the runtime UID/GID to match the host data owner and then drop privileges with `gosu`. `no-new-privileges` on the gateway container breaks that setuid remap, so it is omitted; instead use `cap_drop: [ALL]` and re-add only what the remap, `gosu` and service stop need (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `SETUID`, `SETGID`, `KILL`), plus a targeted seccomp profile. If an in-container sandbox (for example bubblewrap) needs user namespaces, extend seccomp narrowly; never use `seccomp=unconfined` or `privileged`. The reference also runs the gateway container AppArmor-unconfined for that reason, an accepted trade-off; its browser containers load a dedicated AppArmor profile that adds only user namespaces. Verify the effective UID of the gateway process from the host. Because the container starts as root, a plain `docker exec <container> hermes …` lands as **root**; the privilege drop applies only to the entrypoint's own process tree. Run every CLI call as the runtime user through a small wrapper (`docker exec -u <runtime-user> …`), never as root, or root-owned files in the data home can be silently ignored or break the gateway and scheduler.
 - **Pin the file-write safe root in the container environment.** The image's default write-safe root is the data home only; writes elsewhere are hard-blocked with no approval prompt. Extend it explicitly (for example `HERMES_WRITE_SAFE_ROOT=$HERMES_HOME:<workspace>:/tmp`) in the compose environment, because the image's own environment beats values in the Hermes `.env`.
+- **Do not put root-run code where the agent can write.** Practice: a supervised service that the container's supervisor starts as root, but whose files sit under the agent's writable data directory, lets the agent swap the file between check and run. Make such trees root-owned and write-protected after each apply, and refuse to boot if a closed-world manifest check finds an unlisted or changed file. Anything executed with more privilege than the agent must not be writable by the agent.
 - **Keep child-process state apart from gateway state.** The reference gives child CLIs (git, gh, MCP helpers) their own HOME under the data directory, separate from `HERMES_HOME` (on the fork build used here, via `HERMES_CHILD_HOME`). Do not point the gateway's own `HOME` at that child path.
 - **Know what can shadow image binaries.** If a writable directory inside the data home is on `PATH`, a stale copy of a system tool placed there wins over the image's binary. Keep image directories first, and detect shadows with a check rather than reordering `PATH` for one tool.
 - **A read-only Docker socket mount protects nothing.** `:ro` covers the socket file, not the API behind it; anything that can reach the socket is close to host root. Log viewers and dashboards that need it should have actions disabled, bind to loopback, sit behind authentication, or use a read-only socket proxy.
@@ -229,7 +230,9 @@ Where possible, inject credentials only into the process that needs them. Prefer
 - **External secret managers have budgets.** If secrets are resolved from a manager with a per-account read budget, every home pulls on its own: each profile, each gateway boot, each `hermes` CLI process (including ones the agent starts from its shell), and, on a multiplexed gateway, a re-pull before cron runs once the cache expires. Diagnostics such as `hermes doctor` and `config check` resolve every reference too. With a short default cache TTL this can spend a daily budget in hours. Once the budget is spent every read fails, and a boot or restart comes up without messaging tokens while the health endpoint stays green. The reference deployment's design: a cache TTL of hours set in every home (a rotated secret then needs that home's cache cleared before restart); grouped reads per item that stop at the first rate-limit response and write one account-wide backoff marker; a throttled re-pull that keeps the last good values instead of emptying the scope; agent shells in cache-only mode so a shell `hermes` never calls the manager (on the fork build used here); a budget row in the health sweep; and upgrades and planned restarts refused while the budget is spent. Cache-only mode protects the budget, not the vault: the service account's scope is still the real limit.
 - **Keep backup credentials away from the agent.** Store the backup repository password and storage keys together in one host-only, mode-`600` file that is not mounted into the agent's container, so a compromised or confused agent cannot delete or prune backups. Add deny rules for backup-destruction commands (for example `*restic*forget*`) as a second layer.
 
-Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
+Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context; current Hermes releases ship a credential vault that fills logins and cards without the model seeing their values. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
+
+Practice: bind a consequential approval, such as a payment, to its observed outcome (evidence that an order went through), not to a count of UI presses. A one-press budget let a page's extra confirmation step use up the approval, and every guard added to tell the presses apart opened a new edge case. Let one approval allow the presses the purchase needs and let the detected order spend it.
 
 ## 7. Minimize the tool surface
 
@@ -268,9 +271,11 @@ hermes config set approvals.single_query_mode deny
 hermes config set approvals.unattended_mode deny
 ```
 
-`single_query_mode` (one-shot `-q` sessions) and `unattended_mode` (webhook and API-server sessions) default to `deny`; the reference deployment leaves them at that default and asserts `cron_mode: deny` on every deploy (below). On a build without `approvals.unattended_mode`, programmatic sessions need an explicit external execution boundary, not an invented config key.
+`single_query_mode` (one-shot `-q` sessions) and `unattended_mode` (webhook and API-server sessions) default to `deny`; the reference deployment leaves them at that default and asserts the expected `cron_mode` for each home on every deploy (below). On a build without `approvals.unattended_mode`, programmatic sessions need an explicit external execution boundary, not an invented config key.
 
 These settings do not prove fail-closed behavior on every terminal backend. Dangerous-command checks are skipped on container and sandbox terminal backends such as `docker`, `singularity`, `modal`, `daytona` and `vercel_sandbox`, because that backend is treated as the boundary. Keep two questions separate: where the Hermes process itself runs (for example an outer Docker container) and which `terminal.backend` executes agent commands. For each profile, read the effective terminal backend and use `hermes approvals test` where supported to obtain a verdict without execution; then assess the actual isolation of the sandbox backend (mounts, credentials, egress) rather than counting the deny settings as enforcement. Never run a dangerous command to prove that it is denied.
+
+`deny` is the recommended baseline. The reference deployment deliberately differs in its main home: its owner chose `approve` there, so the owner's own project controllers can run their scripts unattended. The hardline blocklist and `approvals.deny` still block under `approve`, and the cron toolset leaves out code execution. Named profiles keep `deny`. The deploy asserts the expected value per home, so either choice is checked, not assumed. Treat `approve` as an owner decision with a written reason, not a default.
 
 For high-consequence interactive administration, consider `manual` instead of `smart`.
 
@@ -279,7 +284,7 @@ Avoid:
 - `approvals.mode: off`;
 - `--yolo` on a privileged host;
 - `HERMES_YOLO_MODE=1` in aliases or service units;
-- `cron_mode: approve` for general autonomous jobs;
+- `cron_mode: approve` for general autonomous jobs, unless it is a recorded owner decision for one home (see above);
 - broad permanent allowlist entries such as an interpreter, shell, package manager, or `systemctl`.
 
 Review accumulated permanent approvals:
@@ -295,7 +300,7 @@ Audit each permanent entry for what it pre-approves, not what it was added for. 
 
 Read back the **type** of any list-valued key you set from the command line. Older `hermes config set` builds stored a JSON list as a YAML string: iterating that string turned a deny list into one glob per character, so `*` matched every command, and a stringified mention-pattern list silenced every group topic while direct messages worked. Current upstream parses list literals, refuses a wrong-shaped value and warns about quoted list values, but a value written by an older build stays wrong until rewritten. Prefer `hermes config edit` or a YAML list in the file for structured values, then verify with `hermes config get`.
 
-**Policy is asserted, not locked.** The reference deployment's install policy is `skills.write_approval: true`, `memory.write_approval: false` and `approvals.cron_mode: deny` (section 11 explains the memory choice). If `config.yaml` is mirrored to Git or the agent can run `hermes config set`, an export or self-edit can flip those leaves unnoticed; a runtime export once turned `skills.write_approval` off. "Only the owner changes config" is policy, not a filesystem fact when owner and agent share a UID. So a check script reads the effective trio through `hermes config get` (defaults, then any managed seed, then user config — what the gateway sees) after every deploy and fails the deploy on a mismatch; it exits with a distinct, retryable code when the values could not be read at all, so a container still starting is never confused with a policy violation. On the fork build used here, the image bakes those three leaves into a managed config seed that fills them only when user config omits them; the seed is **not a lock**: `hermes config set` wins and `unset` lets the seed show through. Upstream documents managed scope as a lock; verify which behaviour your build has, and do not add managed keys to "lock" behaviour on a build where they are only a seed.
+**Policy is asserted, not locked.** The reference deployment's install policy is `skills.write_approval: true` and `memory.write_approval: false`, plus the cron mode each home is meant to have: `deny` unless the owner recorded otherwise (section 11 explains the memory choice). If `config.yaml` is mirrored to Git or the agent can run `hermes config set`, an export or self-edit can flip those leaves unnoticed; a runtime export once turned `skills.write_approval` off. "Only the owner changes config" is policy, not a filesystem fact when owner and agent share a UID. So a check script reads the effective trio through `hermes config get` (defaults, then any managed seed, then user config — what the gateway sees) after every deploy and fails the deploy on a mismatch; it exits with a distinct, retryable code when the values could not be read at all, so a container still starting is never confused with a policy violation. On the fork build used here, the image bakes those three leaves into a managed config seed that fills them only when user config omits them; the seed is **not a lock**: `hermes config set` wins and `unset` lets the seed show through. Upstream documents managed scope as a lock; verify which behaviour your build has, and do not add managed keys to "lock" behaviour on a build where they are only a seed.
 
 Use `approvals.deny` for deterministic “never through this agent” commands. Quote YAML glob patterns; matching is fnmatch over the normalized command text and applies even when approvals are off or in YOLO mode. The reference denies backup destruction (`*restic*forget*`) and hook bypass (`*--no-verify*`), and its guard requires both. Keep ordinary test runners off the deny list; a guard against live lifecycle tests belongs in the test harness. Deny rules protect against an honest-but-wrong agent; they do not contain an adversarial process with equivalent OS access.
 
@@ -334,20 +339,7 @@ If a profile genuinely needs internal URLs:
 - do not rely on DNS names alone;
 - verify denied and allowed destinations from the effective runtime.
 
-Enable Tirith command scanning:
-
-```bash
-hermes config set security.tirith_enabled true
-```
-
-Hermes defaults to fail-open if Tirith is unavailable. The reference deployment runs fail-closed. Choose fail-closed **only after verifying the binary and a safe test path**, otherwise routine commands can be locked out:
-
-```bash
-tirith --version
-hermes config set security.tirith_fail_open false
-```
-
-Tirith is not available as a prebuilt native Windows binary; use WSL if this layer is required.
+Older Hermes releases bundled an external command scanner (tirith) behind `security.tirith_*`. Current releases removed it: upgrading drops those keys and turns nothing on in their place. The built-in dangerous-command check now also flags credential exfiltration shapes and invisible or bidirectional Unicode in a command, through the normal approval flow. If you want an external scanner again, treat a plugin that provides one like any other extension (section 11): pin it, review it, and test its failure mode before you rely on it. Do not set `security.tirith_*` on a current build; nothing reads it.
 
 Runtime dependency installation (`security.allow_lazy_installs`) lets opt-in backends (memory providers, telemetry exporters, plugin dependencies) install their packages on first use. On image installs those land in a dependency area under the data directory, never in the sealed application environment, and are re-resolved against each new image. The reference keeps it on, because turning it off freezes the feature set to what the image shipped and breaks any backend enabled later. The cost is a supply-chain gap: those packages come from the package index at runtime, outside the image SBOM and its rescans, so review a newly enabled backend like an image pin and read what is installed from the package manager's sync receipt. For controlled environments where the feature set is fixed, disable it after provisioning and testing:
 
@@ -405,7 +397,7 @@ A service bound to `0.0.0.0` inside a container is a risk signal, not proof of i
 
 On Linux, ports published by Docker are inserted ahead of host firewall rules such as `ufw`: a published port can be reachable even though the firewall appears to deny it. Bind published ports to `127.0.0.1` and reach them through an authenticated private ingress (a tailnet proxy, VPN, or authenticated reverse proxy), or enforce restrictions at the service itself. The reference deployment publishes every port on loopback only, reaches them through tailnet HTTPS ingress, and its health sweep fails any listed port bound to anything other than loopback or the host's own tailnet addresses.
 
-Inside its container, the reference API server listens on `0.0.0.0` because the port mapping and a sidecar web UI on the compose network need it. The startup warning about a non-loopback bind with the local terminal backend is accepted on purpose: the host publishes loopback only and the API requires its key. The residual is real: any container on that compose network that holds the key can drive the agent with its full tool authority.
+Inside its container, the reference API server listens on `0.0.0.0` because the published port and a browser controller on the same compose network need it. The host publishes it on loopback only and the API requires its key, so the startup warning about a non-loopback bind with the local terminal backend is accepted on purpose. The residual is real: any container on that compose network that holds the key can drive the agent with its full tool authority.
 
 A self-hosted CI runner on the agent's host is a listener of a different kind: anyone who can run a workflow on it runs code on the host and reads whatever it mounts. Keep such a runner only for a private repository with no workflow triggered by fork pull requests, and remove it before either condition changes.
 
@@ -431,6 +423,8 @@ Any automatic restarter, built-in or home-grown, must:
 - alert instead of healing silently. Silent revivals hide a recurring fault until it becomes an outage.
 
 A host-level loop that runs `docker restart` on failed health checks usually violates all three. The reference deployment removed exactly such a watchdog and runs none: its `docker restart` SIGKILLed the gateway, its silent revivals hid a recurring fault, and it revived a container stopped for repair. What remains is the in-container supervisor restarting a crashed gateway, Docker's `unless-stopped` policy for a container that exits, and a container healthcheck used for observability only. The accepted trade-off: a gateway that is down inside a still-running container is not revived automatically; the health sweep's gateway-slot row and a silent agent are the detection.
+
+The gateway's own in-process loop watchdog (on by default) is the exception that fits these rules: it exits with the restart code only after the event loop has been frozen for a while, and the supervisor restarts it. Treat such an exit as a symptom. On the reference, four in one afternoon came from host memory pressure: a heavy image build on the same host made the kernel kill processes and stalled the gateway. Cron runs due in that window were lost silently. Do not run heavy builds on the agent's host, or give them a memory floor that refuses to start and aborts when available memory gets low.
 
 The durable delivery ledger is on by default (the reference deployment leaves it so). Keep it enabled unless a specific privacy or storage analysis rejects it:
 
@@ -482,7 +476,7 @@ For command-based (stdio) servers, verify after every image or dependency update
 - keep `AGENTS.md` concise and project-specific;
 - put reusable procedures in `SKILL.md`, not in a giant project prompt;
 - review shell hooks explicitly; keep `hooks_auto_accept: false` and never use `--accept-hooks` or `HERMES_ACCEPT_HOOKS` as a casual default;
-- shield the agent's working directory: project context files load first-match-wins from the working directory (`.hermes.md`, then `AGENTS.md`, `CLAUDE.md`, Cursor rules). If the agent works inside a repository whose `AGENTS.md` or editor rules were written for another tool, those become its instructions. A **non-empty** `.hermes.md` at that root takes precedence; an empty one falls through. See [Identity, Memory and Context](identity-memory-context.en.md);
+- shield the agent's working directory: project context files load first-match-wins from the working directory (`.hermes.md`, then `AGENTS.override.md`, `AGENTS.md`, `CLAUDE.md`, Cursor rules). If the agent works inside a repository whose `AGENTS.md` or editor rules were written for another tool, those become its instructions. A **non-empty** `.hermes.md` at that root takes precedence; an empty one falls through. See [Identity, Memory and Context](identity-memory-context.en.md);
 - decide the agent-write gates per profile:
 
 ```bash
@@ -494,7 +488,7 @@ hermes config set memory.write_approval false   # see below
 
 With `write_approval: true`, writes outside the interactive CLI are staged for an operator to approve. That is a sound default for skills, which are executable procedure. For memory it is a trade-off: in any profile that runs cron or other unattended work, nobody is present to approve, so staged writes accumulate and the job silently loses what it meant to remember. The reference deployment's install policy is `skills.write_approval: true` and `memory.write_approval: false`, asserted after every deploy (section 8); jobs that must not write memory at all omit the `memory` toolset. Its upgrade rehearsal proves all three behaviours on a sanitized copy: a cron-shaped memory write persists, an agent skill write stages for approval, and a job without the `memory` toolset cannot write memory. The gate only works when the approver is not the author. If you delegate queue review to the agent, freeze the reviewed set at the start: proposals staged during the review, including the agent's own, wait for the owner. Do not turn memory approval on to be "safe"; set `memory.write_approval: true` only where every writer is interactive, or where someone reviews `/memory pending` on a schedule.
 
-A memory plugin or memory sidecar is a new process holding the agent's most sensitive data. The reference deployment keeps its memory control surface as a guarded opt-in outside the default compose set: the sidecar has a read-only root filesystem, shares only the web UI's network namespace (no new port or ingress route), and gets no Hermes home, gateway token, task database or Docker socket. Its access token is minted after operator consent and mounted read-only, and is not a boundary against compromised code running as the same UID in the web UI. Activating such a component does not by itself enable any caller policy or MCP server.
+A memory plugin or memory sidecar is a new process holding the agent's most sensitive data. The reference runs its retrieval memory as a supervised sidecar inside the agent container, reachable only through a local socket, with no network port, gateway token or Docker socket. Changes to what it remembers go through a review queue in the owner's chat: each accept or reject carries the owner's own reply, checked by the sidecar, so an injected turn cannot approve itself. Code that runs as root under the agent's writable data directory is root-owned, write-protected and verified against a manifest before it starts. Activating such a component does not by itself enable any caller policy or MCP server.
 
 Project instructions, skills, comments, tickets, web pages, and documents do not inherit authority merely because the agent can read them.
 
@@ -532,7 +526,8 @@ A dangerous command in a deny-mode cron job produces a pending approval that no 
 Scheduling behaviour to design for (one caveat for the whole list: verify on your build):
 
 - interval schedules such as `every 1m` are measured from the end of the previous run, so they drift; use a wall-clock cron expression when timing matters;
-- `cron.catch_up_missed` defaults to `true`, so missed runs fire after downtime as a burst on restart; the reference deployment pins it `false` in the default home and every named profile;
+- `cron.catch_up_missed` defaults to `true`, so missed runs fire after downtime as a burst on restart; the reference deployment pins it `false` in the default home and every named profile. Catch-up is also a per-job setting (`hermes cron edit <id> --catch-up on|off`); the global key is only the default for recurring jobs;
+- a job that pins its own model does not inherit the global fallback chain; give it its own fallback (`--fallback PROVIDER:MODEL`), or one provider outage silently stops that job;
 - unpinned jobs follow changes to the default model; the reference sets a cron-wide `cron.model`, and a job pins its own model when cost or behaviour matters;
 - a one-shot schedule with `repeat` greater than one is not recurrence: it completes after its first fire; use an interval or cron schedule for bounded repeats and check that the next run time advances;
 - completed one-shot jobs are swept from the job store after seven days; a registry or drift check that mirrors the job list must expect that removal;
@@ -614,7 +609,7 @@ Backups that restore:
 - **Drill the restore.** At least quarterly, restore a known file from the latest snapshot into a scratch directory without touching the live runtime. If that fails, the backup is theatre.
 - **Keep scratch out of the data home.** Test fixtures (including deliberately corrupt databases) and experimental stores inside the Hermes home inflate every snapshot, can fail the backup's own checks, and can crash-loop a new image's boot-time disk check. Exclude them, and keep a test proving the exclusions still match.
 - **Keep backup credentials host-only** (see section 6).
-- **Know how the session store grows.** Context compaction can re-insert carried-forward messages, so a store can hold the same tool output several times over; growth tracks compaction, not age, and age-based pruning frees little. Archive before pruning, verify that archived message IDs resolve, and keep built-in automatic pruning off where it offers no archive step (the reference sets `sessions.auto_prune: false` with a long retention, in every profile). The [live state store maintenance skill](../skills/live-state-store-maintenance/SKILL.md) covers repair: never open a live write-ahead log from the host, never rebuild indexes under live writers, never restart a gateway that is already failing writes. Stop, copy and repair the copy.
+- **Know how the session store grows.** Context compaction can re-insert carried-forward messages, so a store can hold the same tool output several times over; growth tracks compaction, not age, and age-based pruning frees little. Archive before pruning (the native, re-importable `hermes sessions export` is the lossless archive), verify that archived message IDs resolve, and keep built-in automatic pruning off where it offers no archive step (the reference sets `sessions.auto_prune: false` with a long retention, in every profile). The [live state store maintenance skill](../skills/live-state-store-maintenance/SKILL.md) covers repair: never open a live write-ahead log from the host, never rebuild indexes under live writers, never restart a gateway that is already failing writes. Stop, copy and repair the copy.
 
 `hermes import` overwrites the target home and requires the target gateway to be stopped. A restore is therefore a separately authorized recovery transaction: use an isolated destination for drills, preserve owner access, and never point a test import at the live home.
 
@@ -735,7 +730,7 @@ Lifecycle tests (restart, import, update, supervisor behavior) belong on a dispo
 - loopback/private listeners behind authenticated ingress;
 - resource limits and external egress policy;
 - supervised gateway and failure alerts, with no host-level restart loop;
-- cron deny mode and the install policy asserted on every deploy;
+- the intended cron mode (`deny` unless the owner recorded otherwise) and the install policy asserted on every deploy;
 - scheduled backups and restore drills.
 
 ### Low-trust ingestion profile

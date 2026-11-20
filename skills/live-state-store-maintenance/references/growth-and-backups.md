@@ -23,14 +23,14 @@ Report the split: canonical rows, duplicate copies, provider/blob columns, FTS i
 1. `hermes sessions optimize` — merges FTS segments and vacuums; no session data changes.
 2. `hermes sessions optimize-storage` — migrates the FTS layout to a compact form. Run it in its own storage window: verified snapshot → stop every writer → baseline integrity/counts → migrate → integrity, counts and search proof → start. Close that window before an image upgrade; never combine the two in one rollback domain. Compaction is not permission to prune rows.
 3. Archive-then-prune (below).
-4. Removing duplicate compaction copies in place — rewrites history rows; needs the owner's explicit approval, a verified archive and proof that display/replay uses only the retained copies.
+4. Remove redundant archived compaction copies in place, offline, in one exclusive transaction: write every removed row to a checksummed archive and verify it before the delete; keep one canonical copy per call; before COMMIT, prove each session's surviving rows are byte-identical to before and that the full-text index still matches its content table; otherwise roll back. Ship a restore that puts rows back under their original ids. On one long-running install this removed about a third of the store with no session lost. It rewrites history rows, so it needs the owner's approval and a verified snapshot (practice, not an official Hermes procedure).
 
 ## Archive-then-prune
 
-Use when the live store should hold only recent history but the full history must stay minable. On the install described here this is a design with a working exporter and verify gate, not a running prune: until the prune runs, session rows are kept (built-in auto-prune off, long retention).
+Use when the live store should hold only recent history but the full history must stay minable. On the install described here no prune has run: until the prune runs, session rows are kept (built-in auto-prune off, long retention).
 
 1. Pick cutoff `T`.
-2. Export every session whose last activity is before `T` into a separate append-only archive (idempotent upsert keyed by the original message id; deduplicate to one row per conversation item, keeping the fullest tool output; map every dropped source row id to its kept row so existing locators still resolve; drop provider blobs, hash inline images).
+2. Export every session whose last activity is before `T`. The lossless archive is the native, re-importable `hermes sessions export`. A deduplicated mining archive is optional and is a reading copy, never the only copy: idempotent upsert keyed by the original message id; one row per conversation item, keeping the fullest tool output; every dropped source row id mapped to its kept row so existing locators still resolve; provider blobs dropped, inline images hashed.
 3. **Verify per session that every source message id resolves in the archive.** Refuse step 4 on any miss.
 4. Prune with the native command (`hermes sessions prune --older-than … --dry-run` first, then for real).
 5. Keep the archive in the backup set.

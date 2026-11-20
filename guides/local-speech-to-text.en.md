@@ -63,6 +63,7 @@ Design points:
 - **Every build input pinned:** base image digest, transcribe.cpp commit, model revision and file hash.
 - **Long audio in chunks.** A 2.6-hour file in one pass needed more than 4 GB. The service now cuts audio into pieces of at most 3 minutes, at the quietest 100 ms inside the last 15 seconds of each piece, and offsets the timestamps. Each piece adds about 0.8 GB of scratch memory, so a 3 GB limit holds any length; the 2.6-hour file took 8.4 minutes.
 - **Same transcript shape as before.** Lines start with `m:ss` so skills that build outlines or strip timestamps keep working. A new line starts at a sentence end once the line is 4 s long, at a pause over 1.2 s, or after 30 s.
+- **Alert on silent fallback, and deploy the sidecar before the config that names it** (practice). If the config pointing at the sidecar goes out first, notes quietly fall back to the built-in local model and nothing in chat says so. Add a health row that flags any fallback use in the last 24 hours, and order deploys so the provider exists before the config that points at it.
 - **Health is checked end to end.** The deploy script and the periodic box check post one second of silence from inside the Hermes container and expect a valid reply. A container health check alone would not show that Hermes can reach it.
 
 The Hermes side is a named command provider. A sketch (paths are illustrative):

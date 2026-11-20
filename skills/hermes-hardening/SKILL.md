@@ -80,7 +80,7 @@ Discover safely when possible; ask only when the answer changes the path.
 
 Never infer a company/client boundary from a profile name. Never print secret values.
 
-Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
+Use supported secret-entry mechanisms that keep passwords, payment credentials and verification codes outside model context; current Hermes releases ship a credential vault that fills logins and cards without the model seeing their values. Do not ask for these values in chat or type them with general-purpose browser inputs. If no supported mechanism exists, hand secret entry to the owner; never invent a private vault integration.
 
 ## Source priority
 
@@ -265,7 +265,6 @@ In APPLY mode:
 - change one failure domain at a time;
 - preserve owner access until the replacement is verified;
 - do not rotate/revoke credentials before the replacement path works;
-- do not switch Tirith to fail-closed until the binary/platform path is verified;
 - do not disable runtime dependency installs until required features are provisioned;
 - do not restart a gateway merely because a file changed—establish whether restart is required. The gateway reads `config.yaml` only at boot, so a gateway-level config change takes effect after an authorized restart of the gateway service (in a container, the in-container supervisor restart, not a container recreate);
 - do not restart or recreate anything while an external secret manager's read budget is spent: the new boot comes up without secrets while health stays green;
@@ -322,7 +321,7 @@ Do not say “secure” without scope. Prefer:
 
 ## Core Hermes baseline
 
-Use these only after confirming applicability and the target's CLI support. The first block is what the reference deployment runs in its default home; its deploy and health sweep also assert the write-approval/cron trio, both browser private-URL leaves and `cron.catch_up_missed` on every named profile, because a sparse profile inherits permissive built-in defaults:
+Use these only after confirming applicability and the target's CLI support. The first block is the recommended baseline. The reference deployment runs it in its named profiles; in its default home the owner chose `approvals.cron_mode approve` on purpose (the hardline blocklist and `approvals.deny` still apply, and cron toolsets leave out code execution). Its deploy and health sweep assert the write-approval/cron trio, with the cron mode each home is meant to have, both browser private-URL leaves and `cron.catch_up_missed` on every named profile, because a sparse profile inherits permissive built-in defaults:
 
 ```bash
 hermes config set security.redact_secrets true
@@ -333,7 +332,6 @@ hermes config set memory.write_approval false
 hermes config set security.allow_private_urls false
 hermes config set browser.allow_private_urls false
 hermes config set browser.auto_local_for_private_urls false
-hermes config set security.tirith_enabled true
 hermes config set cron.catch_up_missed false
 ```
 
@@ -345,7 +343,6 @@ Deployment-dependent controls (the reference's choice in brackets):
 
 ```bash
 hermes config set privacy.redact_pii true            # [on]
-hermes config set security.tirith_fail_open false    # [fail-closed]
 hermes config set checkpoints.enabled true           # [on]
 hermes config set terminal.home_mode profile         # [auto, with a separate child-process HOME at container level]
 hermes config set security.allow_lazy_installs false # [left on: opt-in backends install on demand; review each like an image pin]
@@ -360,7 +357,7 @@ Also check, per profile:
 - list-valued keys read back as lists, not strings (older `config set` builds stored a JSON list as a YAML string, turning a deny list into deny-all; a value written then stays wrong until rewritten); set them with `hermes config edit`;
 - `command_allowlist` entries are approval classes: the class `script execution via -e/-c flag` pre-approves every interpreter one-liner in every session. The reference accepts only that class (or an empty list) as an owner decision;
 - `approvals.deny` covers backup destruction and hook bypass where they apply; it is fnmatch over normalized command text and runs even in YOLO/off modes;
-- effective policy matches intent after every deploy: mirrored config and agent self-edits can flip approval leaves, and on the fork build used here the image's managed config seed is a default, not a lock. Assert the trio `skills.write_approval=true`, `memory.write_approval=false` and `approvals.cron_mode=deny` through `hermes config get` and fail the deploy on a mismatch.
+- effective policy matches intent after every deploy: mirrored config and agent self-edits can flip approval leaves, and on the fork build used here the image's managed config seed is a default, not a lock. Assert the trio `skills.write_approval=true`, `memory.write_approval=false` and `approvals.cron_mode` (the value each home is meant to have: `deny` unless the owner recorded otherwise) through `hermes config get` and fail the deploy on a mismatch.
 
 ## Guardrails and common failure modes
 

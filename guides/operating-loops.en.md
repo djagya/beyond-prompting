@@ -50,7 +50,7 @@ A user correction may affect configuration, task bodies, profile descriptions, c
 
 Do not rewrite historical evidence into current instructions. Classify paused and retired artifacts separately; correction does not authorize reactivation. Keep one canonical current value per owner. Update private identity only through its own approval path.
 
-When an operator or coding agent changes something the runtime agent tracks, tell it with a labelled one-shot note (for example `Operator note:` sent through a non-interactive run, prompt on stdin) instead of editing its records. Ask it to verify each item before closing its own tasks and to reply with what it closed and what it kept.
+When an operator or coding agent changes something the runtime agent tracks, tell it with a labelled note through a channel it authenticates (for example `Operator note:` sent in an authenticated API session, with a one-shot run as the fallback) instead of editing its records. Ask it to verify each item before closing its own tasks and to reply with what it closed and what it kept.
 
 ## 5. Accept the user's job in the requested form
 
@@ -71,6 +71,8 @@ Avoid unsafe repetition to obtain fresher evidence. Reuse valid evidence for an 
 Classify each failure state as **auto-recover** (transient infrastructure: retry after a grace window) or **needs-human** (policy, credentials, corrupt state). Page whatever stays stuck beyond a bound (for example 30 minutes) and persist failure history outside the component that fails; container logs vanish with the container.
 
 An expected, allowlisted failure prints `WARN` and exits 0; a red signal that is usually ignored trains everyone to ignore exit codes. Background loops need a circuit breaker: after N consecutive failures they page instead of failing silently.
+
+The second time the same class of finding comes back, stop fixing case by case (practice). Each fix that adds a retry for one failure shape leaves the next shape alarming. Build one mechanism instead, or one whole-input test that also injects failed, slow and timed-out calls, and let that test hold the class.
 
 Every verification gate needs a negative control: run it once on a known-bad input and see it fail. A gate that has never failed is unproven; one reported PASS for months because its script exited 0 before reaching the check.
 
