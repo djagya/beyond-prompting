@@ -180,6 +180,8 @@ If you run your own fork image:
 
 - Route ops and supply-chain alerts to a **channel the agent cannot reach or suppress** (separate bot, separate chat, or email). A compromised agent must not be able to mute its own alarm.
 - **Circuit breakers on background loops:** page after N consecutive failures. A publish loop once died silently for hours.
+- **Alert on a streak or a stale success, not on each failed run** (practice). Page on the second failed run in a row, or when the last success is older than a set time. For SLO checks, require several consecutive breaches and skip targets that already have an open incident. One transient read failure should not wake anyone.
+- **Every scheduled job leaves a heartbeat that something else reads** (practice). A stopped cron looks the same as one with nothing to report. Each host job writes a last-ran stamp, and the daily check turns red on a missing or stale one. Let the daily check also flag a failed backup receipt, and let an external uptime monitor and the host check watch each other.
 - **Test the alert path end to end.** An alert failed with "chat not found" for days.
 - **A lost page is not green.** If sending the alert fails, the job keeps its failing exit code, and an otherwise clean run exits non-zero too.
 - **Ignores expire.** An ignore without an expiry is a permanent blind spot.

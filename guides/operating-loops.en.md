@@ -72,6 +72,8 @@ Classify each failure state as **auto-recover** (transient infrastructure: retry
 
 An expected, allowlisted failure prints `WARN` and exits 0; a red signal that is usually ignored trains everyone to ignore exit codes. Background loops need a circuit breaker: after N consecutive failures they page instead of failing silently.
 
+The second time the same class of finding comes back, stop fixing case by case (practice). Each fix that adds a retry for one failure shape leaves the next shape alarming. Build one mechanism instead, or one whole-input test that also injects failed, slow and timed-out calls, and let that test hold the class.
+
 Every verification gate needs a negative control: run it once on a known-bad input and see it fail. A gate that has never failed is unproven; one reported PASS for months because its script exited 0 before reaching the check.
 
 ## Compact continuation check
