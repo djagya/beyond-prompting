@@ -82,7 +82,7 @@ It names at least one counter-case per severity claim. "No counter-case found" l
 1. Fetch the current head SHA. If it moved, re-run the affected checks or do not post.
 2. Read comments and reviews added since the draft; drop points already raised or fixed.
 3. Fetch the default branch; check the touched files did not change since your base.
-4. Search once more for duplicate issues and PRs.
+4. Search for duplicates beyond a phrase: list open PRs that touch the same files and read their diffs; search broad terms and the error text a user would paste; check your own past reviews and comments on the repository.
 
 ## Rule 6: final gate
 

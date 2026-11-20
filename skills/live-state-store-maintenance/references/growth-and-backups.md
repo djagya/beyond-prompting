@@ -27,7 +27,7 @@ Report the split: canonical rows, duplicate copies, provider/blob columns, FTS i
 
 ## Archive-then-prune
 
-Use when the live store should hold only recent history but the full history must stay minable. On the install described here this is a design with a working exporter and verify gate, not a running prune: until the prune runs, session rows are kept (built-in auto-prune off, long retention).
+Use when the live store should hold only recent history but the full history must stay minable. On the install described here no prune has run: until the prune runs, session rows are kept (built-in auto-prune off, long retention).
 
 1. Pick cutoff `T`.
 2. Export every session whose last activity is before `T`. The lossless archive is the native, re-importable `hermes sessions export`. A deduplicated mining archive is optional and is a reading copy, never the only copy: idempotent upsert keyed by the original message id; one row per conversation item, keeping the fullest tool output; every dropped source row id mapped to its kept row so existing locators still resolve; provider blobs dropped, inline images hashed.
