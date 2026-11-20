@@ -268,9 +268,11 @@ hermes config set approvals.single_query_mode deny
 hermes config set approvals.unattended_mode deny
 ```
 
-`single_query_mode` (one-shot `-q` sessions) and `unattended_mode` (webhook and API-server sessions) default to `deny`; the reference deployment leaves them at that default and asserts `cron_mode: deny` on every deploy (below). On a build without `approvals.unattended_mode`, programmatic sessions need an explicit external execution boundary, not an invented config key.
+`single_query_mode` (one-shot `-q` sessions) and `unattended_mode` (webhook and API-server sessions) default to `deny`; the reference deployment leaves them at that default and asserts the expected `cron_mode` for each home on every deploy (below). On a build without `approvals.unattended_mode`, programmatic sessions need an explicit external execution boundary, not an invented config key.
 
 These settings do not prove fail-closed behavior on every terminal backend. Dangerous-command checks are skipped on container and sandbox terminal backends such as `docker`, `singularity`, `modal`, `daytona` and `vercel_sandbox`, because that backend is treated as the boundary. Keep two questions separate: where the Hermes process itself runs (for example an outer Docker container) and which `terminal.backend` executes agent commands. For each profile, read the effective terminal backend and use `hermes approvals test` where supported to obtain a verdict without execution; then assess the actual isolation of the sandbox backend (mounts, credentials, egress) rather than counting the deny settings as enforcement. Never run a dangerous command to prove that it is denied.
+
+`deny` is the recommended baseline. The reference deployment deliberately differs in its main home: its owner chose `approve` there, so the owner's own project controllers can run their scripts unattended. The hardline blocklist and `approvals.deny` still block under `approve`, and the cron toolset leaves out code execution. Named profiles keep `deny`. The deploy asserts the expected value per home, so either choice is checked, not assumed. Treat `approve` as an owner decision with a written reason, not a default.
 
 For high-consequence interactive administration, consider `manual` instead of `smart`.
 
@@ -279,7 +281,7 @@ Avoid:
 - `approvals.mode: off`;
 - `--yolo` on a privileged host;
 - `HERMES_YOLO_MODE=1` in aliases or service units;
-- `cron_mode: approve` for general autonomous jobs;
+- `cron_mode: approve` for general autonomous jobs, unless it is a recorded owner decision for one home (see above);
 - broad permanent allowlist entries such as an interpreter, shell, package manager, or `systemctl`.
 
 Review accumulated permanent approvals:
@@ -295,7 +297,7 @@ Audit each permanent entry for what it pre-approves, not what it was added for. 
 
 Read back the **type** of any list-valued key you set from the command line. Older `hermes config set` builds stored a JSON list as a YAML string: iterating that string turned a deny list into one glob per character, so `*` matched every command, and a stringified mention-pattern list silenced every group topic while direct messages worked. Current upstream parses list literals, refuses a wrong-shaped value and warns about quoted list values, but a value written by an older build stays wrong until rewritten. Prefer `hermes config edit` or a YAML list in the file for structured values, then verify with `hermes config get`.
 
-**Policy is asserted, not locked.** The reference deployment's install policy is `skills.write_approval: true`, `memory.write_approval: false` and `approvals.cron_mode: deny` (section 11 explains the memory choice). If `config.yaml` is mirrored to Git or the agent can run `hermes config set`, an export or self-edit can flip those leaves unnoticed; a runtime export once turned `skills.write_approval` off. "Only the owner changes config" is policy, not a filesystem fact when owner and agent share a UID. So a check script reads the effective trio through `hermes config get` (defaults, then any managed seed, then user config — what the gateway sees) after every deploy and fails the deploy on a mismatch; it exits with a distinct, retryable code when the values could not be read at all, so a container still starting is never confused with a policy violation. On the fork build used here, the image bakes those three leaves into a managed config seed that fills them only when user config omits them; the seed is **not a lock**: `hermes config set` wins and `unset` lets the seed show through. Upstream documents managed scope as a lock; verify which behaviour your build has, and do not add managed keys to "lock" behaviour on a build where they are only a seed.
+**Policy is asserted, not locked.** The reference deployment's install policy is `skills.write_approval: true` and `memory.write_approval: false`, plus the cron mode each home is meant to have: `deny` unless the owner recorded otherwise (section 11 explains the memory choice). If `config.yaml` is mirrored to Git or the agent can run `hermes config set`, an export or self-edit can flip those leaves unnoticed; a runtime export once turned `skills.write_approval` off. "Only the owner changes config" is policy, not a filesystem fact when owner and agent share a UID. So a check script reads the effective trio through `hermes config get` (defaults, then any managed seed, then user config — what the gateway sees) after every deploy and fails the deploy on a mismatch; it exits with a distinct, retryable code when the values could not be read at all, so a container still starting is never confused with a policy violation. On the fork build used here, the image bakes those three leaves into a managed config seed that fills them only when user config omits them; the seed is **not a lock**: `hermes config set` wins and `unset` lets the seed show through. Upstream documents managed scope as a lock; verify which behaviour your build has, and do not add managed keys to "lock" behaviour on a build where they are only a seed.
 
 Use `approvals.deny` for deterministic “never through this agent” commands. Quote YAML glob patterns; matching is fnmatch over the normalized command text and applies even when approvals are off or in YOLO mode. The reference denies backup destruction (`*restic*forget*`) and hook bypass (`*--no-verify*`), and its guard requires both. Keep ordinary test runners off the deny list; a guard against live lifecycle tests belongs in the test harness. Deny rules protect against an honest-but-wrong agent; they do not contain an adversarial process with equivalent OS access.
 
@@ -334,20 +336,7 @@ If a profile genuinely needs internal URLs:
 - do not rely on DNS names alone;
 - verify denied and allowed destinations from the effective runtime.
 
-Enable Tirith command scanning:
-
-```bash
-hermes config set security.tirith_enabled true
-```
-
-Hermes defaults to fail-open if Tirith is unavailable. The reference deployment runs fail-closed. Choose fail-closed **only after verifying the binary and a safe test path**, otherwise routine commands can be locked out:
-
-```bash
-tirith --version
-hermes config set security.tirith_fail_open false
-```
-
-Tirith is not available as a prebuilt native Windows binary; use WSL if this layer is required.
+Older Hermes releases bundled an external command scanner (tirith) behind `security.tirith_*`. Current releases removed it: upgrading drops those keys and turns nothing on in their place. The built-in dangerous-command check now also flags credential exfiltration shapes and invisible or bidirectional Unicode in a command, through the normal approval flow. If you want an external scanner again, treat a plugin that provides one like any other extension (section 11): pin it, review it, and test its failure mode before you rely on it. Do not set `security.tirith_*` on a current build; nothing reads it.
 
 Runtime dependency installation (`security.allow_lazy_installs`) lets opt-in backends (memory providers, telemetry exporters, plugin dependencies) install their packages on first use. On image installs those land in a dependency area under the data directory, never in the sealed application environment, and are re-resolved against each new image. The reference keeps it on, because turning it off freezes the feature set to what the image shipped and breaks any backend enabled later. The cost is a supply-chain gap: those packages come from the package index at runtime, outside the image SBOM and its rescans, so review a newly enabled backend like an image pin and read what is installed from the package manager's sync receipt. For controlled environments where the feature set is fixed, disable it after provisioning and testing:
 
@@ -735,7 +724,7 @@ Lifecycle tests (restart, import, update, supervisor behavior) belong on a dispo
 - loopback/private listeners behind authenticated ingress;
 - resource limits and external egress policy;
 - supervised gateway and failure alerts, with no host-level restart loop;
-- cron deny mode and the install policy asserted on every deploy;
+- the intended cron mode (`deny` unless the owner recorded otherwise) and the install policy asserted on every deploy;
 - scheduled backups and restore drills.
 
 ### Low-trust ingestion profile

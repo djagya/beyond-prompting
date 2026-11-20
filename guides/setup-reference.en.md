@@ -147,7 +147,7 @@ Why each one:
 
 - **`memory.write_approval: false`**: `true` stages every write under `pending/` for an operator. A cron job has no operator, so its memory writes never complete. To keep a particular job from writing memory, leave the `memory` toolset off **that job**.
 - **`skills.write_approval: true`**: skills are procedures that run later with authority, so they get the slower, reviewed path.
-- **`approvals.cron_mode: deny`**: a dangerous command in an unattended job is blocked and reported, not auto-approved. A different switch from the staging queue.
+- **`approvals.cron_mode: deny`**: a dangerous command in an unattended job is blocked and reported, not auto-approved. A different switch from the staging queue. This is the recommended baseline and what named profiles keep. The main home of this deployment deliberately runs `approve` instead, as a recorded owner decision so the owner's own controllers can run their scripts unattended; the deploy asserts the expected value per home.
 - **`browser.auto_local_for_private_urls: false`**: with `true` (the image seed's default), a private URL is *routed* to a local browser instead of rejected, and `security.allow_private_urls` does not cover that path.
 
 **Named profiles** (`hermes profile create <name>`) are sparse: a missing leaf fills from **upstream defaults, not from your default profile**. Upstream defaults `cron.catch_up_missed` and `gateway.auto_multiplex_migration` to true and the seed sets the browser fallback to true. Pin every safety leaf in every profile (a "seed shield"), insert them with a script that stamps the live files rather than hand edits, and assert all of them on each deploy and upgrade:
