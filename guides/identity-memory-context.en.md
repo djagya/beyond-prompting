@@ -17,7 +17,7 @@ What the model sees at session start, top to bottom:
 | 3 | Tool guidance | built in | — | — |
 | 4 | Memory | `$HERMES_HOME/memories/MEMORY.md`, `USER.md` | `memory.memory_char_limit`, `memory.user_char_limit` | **Frozen at session start**; over the cap every entry still loads, but each new add is refused. This install sets both limits above the upstream defaults; read the effective values with `hermes config get`. |
 | 5 | Skills index | names + descriptions only | — | Full skill loaded on demand (`skills_list()` → `skill_view(name)`). |
-| 6 | Project context | first match from the working dir: `.hermes.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules` / `.cursor/rules/*.mdc` | `context_file_max_chars` when set, otherwise a model-scaled cap | Only **one** type loads (§5). |
+| 6 | Project context | first match from the working dir: `.hermes.md` → `AGENTS.override.md` → `AGENTS.md` → `CLAUDE.md` → `.cursorrules` / `.cursor/rules/*.mdc` | `context_file_max_chars` when set, otherwise a model-scaled cap | Only **one** type loads (§5). |
 | 7 | Timestamp, platform hints | built in | — | — |
 | 8 | Optional `/personality` overlay | config | — | — |
 
@@ -118,7 +118,7 @@ Shield: put a **non-empty** `.hermes.md` at the root of the agent's working dire
 Checklist:
 
 - [ ] Agent working dir has a non-empty `.hermes.md`.
-- [ ] Nothing in that dir's `AGENTS.md`/`CLAUDE.md`/`.cursor/` is meant for this agent (if it is, move it into `.hermes.md`).
+- [ ] Nothing in that dir's `AGENTS.override.md`/`AGENTS.md`/`CLAUDE.md`/`.cursor/` is meant for this agent (if it is, move it into `.hermes.md`).
 - [ ] Context files contain no hidden HTML comments or invisible characters — the injection scanner blocks the whole file.
 - [ ] Cron jobs that need project context have a `workdir`; everything else they need is in SOUL/ARCHITECTURE/skills.
 

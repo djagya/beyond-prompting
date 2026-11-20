@@ -471,7 +471,7 @@ For command-based (stdio) servers, verify after every image or dependency update
 - keep `AGENTS.md` concise and project-specific;
 - put reusable procedures in `SKILL.md`, not in a giant project prompt;
 - review shell hooks explicitly; keep `hooks_auto_accept: false` and never use `--accept-hooks` or `HERMES_ACCEPT_HOOKS` as a casual default;
-- shield the agent's working directory: project context files load first-match-wins from the working directory (`.hermes.md`, then `AGENTS.md`, `CLAUDE.md`, Cursor rules). If the agent works inside a repository whose `AGENTS.md` or editor rules were written for another tool, those become its instructions. A **non-empty** `.hermes.md` at that root takes precedence; an empty one falls through. See [Identity, Memory and Context](identity-memory-context.en.md);
+- shield the agent's working directory: project context files load first-match-wins from the working directory (`.hermes.md`, then `AGENTS.override.md`, `AGENTS.md`, `CLAUDE.md`, Cursor rules). If the agent works inside a repository whose `AGENTS.md` or editor rules were written for another tool, those become its instructions. A **non-empty** `.hermes.md` at that root takes precedence; an empty one falls through. See [Identity, Memory and Context](identity-memory-context.en.md);
 - decide the agent-write gates per profile:
 
 ```bash
